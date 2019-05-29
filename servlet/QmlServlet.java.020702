@@ -1,0 +1,298 @@
+package com.qkernel.servlet;
+
+// QmlServlet.java        Servlet to Get a QML Document
+// ---------------------------------------------------------------------------
+// History:
+// --------
+// 06/28/02 M. Gill	Moved initFilter() to be before getOrbAddress().
+// 06/10/02 M. Gill	Add support for sending FileObject in response
+// 06/07/02 M. Gill	Fixed bug in doPost() when handling 
+//			multipart/form-data requests.
+// 05/27/02 M. Gill	1) Support multipart/form-data encoding.
+//			2) Moved to com.qkernel.servlet package.
+// 04/26/02 M. Gill	Use getHeaderNames() to get all headers in request.
+// 04/11/02 M. Gill	Support multi-valued parameters in request 
+// 03/19/02 M. Gill	Add initFilter(), and requestFilter() 
+// 01/15/02 M. Gill	Initial creation.
+// ---------------------------------------------------------------------------
+//
+import com.qkernel.QMessage;
+import com.qkernel.QmlProxy;
+import com.qkernel.FileObject;
+import com.qkernel.servlet.multipart.*;
+//
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.http.*;
+import java.util.*;
+import java.lang.*;
+import java.io.*;
+import java.net.*;
+
+//---------------------------------------------------------------------------
+// QmlServlet is an Http Servlet class invoked from a browser request to render
+// a QML document....QML documents are Business objects associated with 
+// a QML text file. A QML text file, is an extended XHTML document with 
+// tags that invoke business methods in the business tier.
+//---------------------------------------------------------------------------
+//
+public abstract class QmlServlet extends HttpServlet 
+{
+  	public String OrbAddress;
+    	public int    OrbPort;
+        public String CookieId;
+	public String DefaultUrl;
+
+    public abstract String getOrbAddress();
+    public abstract int    getOrbPort();
+    public abstract String getCookieId();
+    public abstract String getDefaultUrl();
+
+
+    public void initFilter(ServletConfig cfg)
+    {
+
+    }
+
+    public void requestFilter(HttpServletRequest req, QMessage argv)
+    {
+
+    }
+
+    //-----------------------------------------------------------------------
+    // Here's all of the important global stuff,
+    //----------------------------------------------------------------------- 
+    public void init(ServletConfig cfg)
+	throws ServletException
+    {
+	super.init(cfg);
+
+	initFilter(cfg);
+
+	OrbAddress 	= getOrbAddress();
+    	OrbPort    	= getOrbPort();
+	CookieId        = getCookieId();
+	DefaultUrl	= getDefaultUrl();
+
+    }
+
+
+    //-----------------------------------------------------------------------
+    // A Servlet by any other name, is still, a Servlet...
+    // Here we implement the ever so popular doGet method
+    //-----------------------------------------------------------------------
+    public void doGet(HttpServletRequest req, HttpServletResponse res)
+	throws ServletException, IOException
+    {
+        QMessage argv	= new QMessage();
+
+	//----------------------------------------------------------------
+	// Here we gather all of the important stuff from our
+	// request stream, and pack it , into our request object.
+	//----------------------------------------------------------------
+	Enumeration enum = req.getParameterNames();
+	while(enum.hasMoreElements())
+	{
+	    String str = (String)enum.nextElement();
+	    String[] sa= req.getParameterValues(str);
+
+	    if(sa.length > 1)
+	        argv.put(str, sa);
+	    else
+	    	argv.put(str, req.getParameter(str));
+	}
+
+	doGetHeaders(req, res, argv); 
+
+	doQmlRequest(req, res, argv); 
+    }
+
+
+    //--------------------------------------------------------------------
+    // Implement doPost to support hidden forms and perhaps other 
+    // post requests from externel services...If content type is not 
+    // "multipart/form-data", process 
+    // via doGet...Otherwise handle the multipart goo...
+    //--------------------------------------------------------------------
+    public void doPost (HttpServletRequest req, HttpServletResponse res)
+	throws ServletException, IOException
+    {
+	String requestType = req.getContentType();
+
+	if(!requestType.startsWith("multipart/form-data"))
+	{
+	//--------------------------------------------
+	// this is a regular urlencode thing...
+	//--------------------------------------------
+	    doGet(req, res);
+	}
+	else
+	{
+	//--------------------------------------------
+	// This is a multipart/form-data request...
+	//--------------------------------------------
+            QMessage argv = new QMessage();
+        try 
+	{
+   	    ByteArrayOutputStream        bostream;
+    	    BufferedOutputStream   output_stream;
+
+	    doGetHeaders(req, res, argv);
+
+	    MultipartParser mp = new MultipartParser(req, 10*1024*1024); // 10MB
+	    Part part;
+
+            while ((part = mp.readNextPart()) != null) 
+	    {
+         	String name = part.getName();
+        	if (part.isParam()) 
+		{
+          	    ParamPart paramPart = (ParamPart) part;
+         	    String        value = paramPart.getStringValue();
+	    	    argv.put(name, value);
+        	}
+        	else if (part.isFile()) 
+		{
+		    FilePart filePart = (FilePart) part;
+          	    String fileName   = filePart.getFileName();
+
+          	    if (fileName != null) 
+		    {
+            		bostream      = new ByteArrayOutputStream();
+            		output_stream = new BufferedOutputStream(bostream);
+            		long size     = filePart.writeTo(output_stream);
+			
+			FileObject fo = new FileObject(fileName,
+						       filePart.getContentType(),
+						       filePart.getFilePath(),
+						       bostream.toByteArray(), 
+						       size
+						      );
+			argv.put(name, fo);
+          	    }
+        	}
+      	    }
+    	}catch (IOException e){ }
+
+	    doQmlRequest(req, res, argv);
+	}
+    }
+
+
+
+    //----------------------------------------------------------------------
+    // Send everything we got to a QmlDocumentBroker... or similar ORB :-)
+    //----------------------------------------------------------------------
+    protected void doQmlRequest(HttpServletRequest  req, 
+				HttpServletResponse res, QMessage argv)
+	                           throws ServletException, IOException
+    {
+
+	QmlProxy obj = new QmlProxy(OrbAddress, OrbPort);
+	QMessage rep = new QMessage();
+
+	//------------------------------
+	// Execute the filter
+	//------------------------------
+	requestFilter(req, argv);
+
+	//-----------------------------------------------------------------
+	// Connect to the remote object, send the request, and get the 
+	// reply object...
+	//-----------------------------------------------------------------
+    	try
+	{
+	    rep =obj.getDocument(argv);
+
+	    String TargetUrl	=(String)rep.get("TargetUrl");
+	    String Arg0		=(String)rep.get("Arg0");
+	    String Arg2		=(String)rep.get("Arg2");
+
+	    if(Arg0.equals("html"))
+    	    {
+	    	//-----------------------------
+	    	// Print HTML Document
+	    	//-----------------------------
+		String fStr=(String)rep.get("Arg1");
+
+		PrintWriter out = res.getWriter();
+		res.setContentType(Arg2);
+	        out.write(fStr);
+		out.flush();
+		out.close();
+	    }
+	    else if(Arg0.equals("binary"))
+	    {
+	    	//-----------------------------
+	    	// Print Binary File
+	    	//-----------------------------
+		FileObject fo=(FileObject)rep.get("Arg1");
+
+  		ServletOutputStream ostream = res.getOutputStream();
+		DataOutputStream out        = new DataOutputStream(ostream);
+
+		res.setContentType(Arg2);
+	        out.write(fo.getImage(), 0, (int)fo.getImageSize());
+		out.flush();
+		out.close();
+	    }
+	    else if(Arg0.equals("redirect"))
+	    {
+	    	//---------------------------
+	    	// Target must be redirect...
+	    	//---------------------------
+		res.sendRedirect("http://"+TargetUrl);
+	    }
+	    else
+	    {
+	    	//-----------------------------------
+	    	// Something went wrong...
+	    	// Send the default error.
+	    	//-----------------------------------
+	    	//res.sendRedirect(HttpReferer);
+		res.sendRedirect(DefaultUrl);
+	    }
+	}
+	catch(Exception e)
+	{
+	    //-----------------------------------
+	    // Something went wrong...
+	    // Send the default.
+	    //-----------------------------------
+	    //res.sendRedirect(HttpReferer);
+	    res.sendRedirect(DefaultUrl);
+
+   	}
+    }
+
+
+    //--------------------------------------------------------------
+    // Grab all headers...and Cookie stuff...
+    //-------------------------------------------------------------- 
+    protected void doGetHeaders(HttpServletRequest  req, 
+				HttpServletResponse res, QMessage argv)
+    { 
+	CookieGen cg    = new CookieGen(req, res);
+
+	Enumeration enum2 = req.getHeaderNames();
+	while(enum2.hasMoreElements())
+	{
+	    String name = (String)enum2.nextElement();
+	    String value=  req.getHeader(name);
+
+	    if(name!= null && value != null) 
+	        argv.put(name, value);
+	}
+
+	String userId =  cg.getCookieValue(CookieId, true);
+	argv.put("UserId", userId);
+	argv.put("SessionId", userId);
+    }
+
+    /*
+    public QmlServlet()
+    {
+
+    }
+    */
+}
