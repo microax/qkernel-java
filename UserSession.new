@@ -1,0 +1,203 @@
+package com.qkernel;
+//
+// UserSession.java     Cache Service for EntityObjects
+// ----------------------------------------------------------------------------
+// History:
+// --------
+//
+// 01/15/02 M. Gill 	Initial creation.
+// ----------------------------------------------------------------------------
+//
+import java.lang.*;
+import java.util.*;
+
+
+//-----------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------
+//
+public final class UserSession extends Thread
+{
+    public     Daemon daemon;
+
+    protected  Hashtable objTable;
+    protected  Hashtable expTable;
+    protected  String    myName;
+    protected  int       myTicks;
+ 
+    //--------------------------------------------------------------------------------
+    // METHOD 	run()
+    //
+    // PURPOSE:	This the main execution loop for Cache Service.      
+    //
+    // RETURN:  Never.
+    //--------------------------------------------------------------------------------
+    public void run()
+    {
+	Enumeration enum;
+    	EntityCacheNode t;
+
+	setName(myName);
+
+	daemon.eventLog.sendMessage("Ready expire="+myTicks+" minutes");
+
+        for( ;; )
+        {
+	    try
+	    {
+		//---------------------------
+		// Wakeup once per minute
+		//---------------------------
+            	sleep(60000);
+
+		if(!expTable.isEmpty())
+   		{
+		    enum = expTable.elements();
+
+   		    while (enum.hasMoreElements())
+		    {
+			t = (EntityCacheNode)enum.nextElement();
+
+			if(--t.ticks == 0)
+			{
+			    //----------------------------
+			    // Expire unread nodes
+			    //----------------------------
+			    objTable.remove(t.key);
+			    expTable.remove(t.key);
+			}
+		    }
+		}
+	    }
+	    catch(Exception e)
+	    {
+		daemon.event_log.SendMessage("run block failed becasue: " + 
+					     e.getMessage());
+	    }
+        }
+    }
+
+
+    //--------------------------------------------------------------------------------
+    // METHOD remove()
+    //
+    // PURPOSE:	Remove an Object from Cache
+    //
+    // INPUT:	Object - key
+    //
+    // RETURN:	None.
+    //--------------------------------------------------------------------------------
+    public void remove(Object key)
+    {
+	expTable.remove(key);
+	objTable.remove(key);
+    }
+
+
+    //--------------------------------------------------------------------------------
+    // METHOD get()
+    //
+    // PURPOSE:	Get an Object from Cache
+    //
+    // INPUT:	Object - key
+    //
+    // RETURN:	Object in objTable.
+    //--------------------------------------------------------------------------------
+    public Object get(Object key)
+    {
+	EntityCacheNode node =null;
+
+	node       = (EntityCacheNode)expTable.get(key);
+
+	if(node != null)
+	    node.ticks = myTicks;
+
+	return(objTable.get(key));
+    }
+
+
+    //--------------------------------------------------------------------------------
+    // METHOD put()
+    //
+    // PURPOSE:	Put an Object into Cache
+    //
+    // INPUT:	Object - key
+    //		Object - obj
+    //
+    // PROCESS: 1) Create new EntityCacheNode, and place into expTable
+    //		2) Put obj into objTable
+    //
+    // RETURN:	None.
+    //--------------------------------------------------------------------------------
+    public void put(Object key, Object obj)
+    {
+	EntityCacheNode node =null;
+
+	node 		= new EntityCacheNode();
+	node.key	= key;
+	node.ticks	= myTicks;
+
+	expTable.put(key, node);
+	objTable.put(key, obj);
+    }
+
+
+
+    //--------------------------------------------------------------------------------
+    // METHOD start()
+    //
+    // PURPOSE:	Starts the Cache Service Thread
+    //
+    // INPUT:	int => Cache expire time in munutes.
+    //
+    // PROCESS:	Set myTicks.
+    //
+    // RETURN:	None.
+    //--------------------------------------------------------------------------------
+    public void start(int t)
+    {
+	myTicks = t;
+        super.start();
+    }
+
+
+
+    //--------------------------------------------------------------------------------
+    // METHOD start()
+    //
+    // PURPOSE:	Starts the Cache Service Thread
+    //
+    // INPUT:	none
+    //
+    // PROCESS:	Set myTicks to default.
+    //
+    // RETURN:	None.
+    //--------------------------------------------------------------------------------
+    public void start()
+    {
+	myTicks = 1440; // default = 24 hours
+        super.start();
+    }
+
+
+
+    //--------------------------------------------------------------------------------
+    // METHOD UserSession()
+    //
+    // PURPOSE:	Public Contructor
+    //
+    // INPUT:	Referance to Daemon object.
+    //
+    // PROCESS:	Construct stuff :-)
+    //
+    // RETURN:	None.
+    //--------------------------------------------------------------------------------
+    public UserSession(String n, Daemon d)
+    {
+	myName =n;
+        daemon =d;
+
+	expTable = new Hashtable();
+	objTable = new Hashtable();
+    }
+}

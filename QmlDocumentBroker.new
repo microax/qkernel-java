@@ -1,0 +1,178 @@
+package com.qkernel;
+//
+// QmlDocumentBroker.java        QML Document Broker
+// ----------------------------------------------------------------------------
+// History:
+// --------
+// 01/08/02 M. Gill	Add Support for AppClassReloader. QmlDocumentHandler Classes 
+//			can be reloaded when changed on the file system.
+//			
+// 05/18/01 M. Gill	Use java.lang.reflect.Constructor.newInstance() to
+//			pass Daemon reference to document handlers.
+//
+// 11/05/00 M. Gill	Changed doc handler name to "QMLclass" from "Arg0"
+//			Perhaps, in the future the document broker can be 
+//			started with a configurable DocumentHandler class name.
+// 
+// 08/13/00 M. Gill	Changed from abstract class to public final
+//			QmlDocumentBroker now uses Class.forname to load
+//			instances of document classes.
+//
+// 07/24/00 M. Gill	Initial creation.
+// ----------------------------------------------------------------------------
+//
+import java.lang.*;
+import java.lang.reflect.*;
+import java.io.*;
+import java.util.*;
+import java.net.*;
+import classloader.AppClassReloader;
+
+//----------------------------------------------------------------------------
+// The idea behind QML (Qkernel Markup Language) is to provide a facility 
+// for separating presentation , and business logic in a language neutral,  
+// platform independent way, without relying on (or precluding ) vender 
+// specific services such as Active Server Pages, Cold Fusion, Java Server 
+// Pages, and the like...
+// The only dependency for using QML is that the supporting business logic 
+// resides in a Qkernel application.
+//
+// QML is based on, and, extends XHTML, the www.w3.org XML DTD 
+// (Document Type Definition) of HTML 4.0. QML files are well formed HTML 
+// files (.i.e. <p> is represented as <p> </p>  and so on)...QML  extends 
+// XHTML with two new tags, <IBLOCK> and <REPLACE>. <IBLOCK>  </IBLOCK> 
+// tags indicate that HTML code between these tags will loop (or iterate) based 
+// on the required business logic. The <REPLACE> tag indicates that the output 
+// be replaced based on the business logic of the application....
+// The QML "name=" Attribute is the name of a method that will be invoked when 
+// parsed. Two values are passed to QML methods 1) A String representing the 
+// default text between the start and end tags; 2) a String representing any 
+// additional attributes passed via the "attr=" modifier in a QML tag.
+//
+// A QML Document Object is created by sub-classing QmlDocumentHandler(), and 
+// implementing the user defined QML tag methods. The developer must also 
+// implement initSourceDocument() and getDocument()...
+// getDocument() is invoked by the QmlDocumentBroker at run time when a QML 
+// document is requested.
+//
+// A QmlDocumentBroker is a Qorb (Qkernel Object Request Broker) that extends 
+// the Joa (Java Object Adapter) creating a generic document broker for 
+// QML documents .
+//----------------------------------------------------------------------------
+//
+public final class QmlDocumentBroker extends Joa 
+{
+    private String docbase            = null;
+    private AppClassReloader reLoader = null;
+
+
+    //--------------------------------------------------------------------------------
+    // METHOD 	getDocument()
+    //
+    // PURPOSE:	Called remotely by a servlet, to process a browser request, 
+    // 		to render a QML document.
+    //
+    // INPUT:	JoaContext
+    //
+    // PROCESS:	1) Invoke JoaContext.ReadObject() to retrieve HTTPRequest object.
+    //		   Arg0 => The requested Document object
+    //		2) Create the QmlDocumentHandler instance and invoke it's 
+    //		   getDocument() method.
+    //		3) Return HTTPReply object to remote client.
+    //		4) Close JoaContext. 
+    //
+    // RETURN:  HTTPResponse (via JoaContext.Reply())
+    //--------------------------------------------------------------------------------
+    public void getDocument(JoaContext ctx)
+    {
+        HTTPRequest argv;
+	HTTPResponse   reply_obj = null;
+        Method method = null;
+        Object[] arguments = null;
+        Object[] cargs = null;
+	Class[]  params = null;
+	Class[]  cparms = null;
+        Class DocumentClass =null;
+        Constructor DocumentConstructor =null;
+        QmlDocumentHandler doc_handler = null;
+        String handlerClass;
+
+	argv = (HTTPRequest)ctx.ReadObject();
+	handlerClass = (String)argv.get("QMLclass");
+        daemon.event_log.SendMessage("Document:" +handlerClass+ " requested.");
+
+	if((docbase != null) && (reLoader == null))
+	{
+	    reLoader = new AppClassReloader(daemon, docbase);
+	}
+
+	if (handlerClass == null)
+	{
+	    ctx.Close();
+	    return;
+	}
+
+	try
+	{
+	    if(reLoader != null)
+	    {
+		DocumentClass   = reLoader.loadClass(handlerClass);
+	    }
+	    else
+	    {
+            	DocumentClass	= Class.forName(handlerClass);
+	    }
+	    cargs		= new Object[]{ daemon };
+	    cparms		= new Class[] { com.qkernel.Daemon.class };
+	    DocumentConstructor = DocumentClass.getConstructor(cparms);
+	    doc_handler         = (QmlDocumentHandler)DocumentConstructor.newInstance(cargs);
+       	    arguments		= new Object[]{ argv };
+            params		= new Class[] { argv.getClass() };
+
+	}
+	catch(Exception e)
+	{
+            daemon.event_log.SendMessage("Could not create "+ handlerClass +
+					 " instance because: "+ e.toString());
+	    ctx.Close();
+	    return;
+	}
+
+	try
+        {
+            method    = DocumentClass.getMethod("getDocument", params);
+	    reply_obj = (HTTPResponse)method.invoke(doc_handler, arguments);
+        }
+        catch( Exception e)
+	{ 
+            daemon.event_log.SendMessage("getDocument() failed because: "
+					  + e.toString());
+
+	    ctx.Close();
+	    return;
+	}
+        ctx.Reply(reply_obj);
+        ctx.Close();
+    }
+
+
+
+    public QmlDocumentBroker(String name, Daemon daemon)
+    {
+	super(name, daemon);
+
+	docbase = null;
+	reLoader= null;
+    }
+
+
+    public QmlDocumentBroker(String name, String docroot, Daemon daemon)
+    {
+
+	super(name, daemon);
+
+	docbase = docroot;
+	reLoader= null;
+    }
+
+}

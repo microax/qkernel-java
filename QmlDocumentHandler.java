@@ -1,0 +1,806 @@
+package com.qkernel;
+//
+// QmlDocumentHandler.java        QML Document Handler
+// ----------------------------------------------------------------------------
+// History:
+// --------
+// 05/27/05 M. Gill	Add viewFromString() and viewFromFileObject() 
+//			-- forms QMessage without parse.
+//
+// 10/01/03 M. Gill	Fixed iblock invoke method so that iblock methods
+//			may be sub-classed.
+//
+// 09/02/02 M. Gill	1) Implement a Method cache to reduce the overhead
+//			   of reflective Method creation in iblocks
+//
+// 04/11/02 M. Gill	1) default to parseIBLOCK(1) when <iblock> method
+//			   is missing.
+//			2) default _xmit() when <replace> method missing
+//
+// 04/10/02 M. Gill	RE-Fixed problem with printing html endtags...
+//	    		Add getMime(), setMime()
+// 03/06/02 M. Gill	Added viewString()
+// 02/17/02 M. Gill	Added view(), and forward()
+//			*** this class is a mess but, quite functional... 
+//			Rewite to clean up bad code on todo list  ***
+//
+// 01/19/02 M. Gill	Fixed problem with printing html endtags...
+// 08/13/01 Natasha	Fixed problem with <internel> tag...
+// 05/19/01 M. Gill	Set daemon in constructor.
+// 07/24/00 M. Gill	Modified to work with QMLDocumentBroker().
+// 07/15/00 Natasha	Initial creation.
+// ----------------------------------------------------------------------------
+//
+import java.io.*;
+import java.util.*;
+import java.text.*;
+import java.lang.*;
+import java.lang.reflect.*;
+
+import org.w3c.dom.*;
+import org.xml.sax.*;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.parsers.SAXParser;
+import org.xml.sax.helpers.AttributeListImpl;
+
+@SuppressWarnings({"unchecked", "deprecation"})
+
+//
+//----------------------------------------------------------------------------
+// There is still plenty of work to be done for this class...where to begin?
+//...From the beginning...
+//
+// The idea behind QML (Qkernel Markup Language) is to provide a facility
+// for separating presentation , and business logic in a language neutral,
+// platform independent way, without relying on (or precluding ) vender
+// specific services such as Active Server Pages, Cold Fusion, Java Server
+// Pages, and the like...
+// The only dependency for using QML is that the supporting business logic
+// resides in a Qkernel application.
+//
+// QML is based on, and, extends XHTML, the www.w3.org XML DTD
+// (Document Type Definition) of HTML 4.0. QML files are well formed HTML
+// files (.i.e. <p> is represented as <p> </p>  and so on)...QML  extends
+// XHTML with two new tags, <IBLOCK> and <REPLACE>. <IBLOCK>  </IBLOCK>
+// tags indicate that HTML code between these tags will loop (or iterate) based
+// on the required business logic. The <REPLACE> tag indicates that the output
+// be replaced based on the business logic of the application....
+// The QML "name=" Attribute is the name of a method that will be invoked when
+// parsed. Two values are passed to QML methods 1) A String representing the
+// default text between the start and end tags; 2) a String representing any
+// additional attributes passed via the "attr=" modifier in a QML tag.
+//
+// A QML Document Object is created by sub-classing QmlDocumentHandler(), and
+// implementing the user defined QML tag methods. The developer must also
+// implement initSourceDocument() and getDocument()...
+// getDocument() is invoked by the QmlDocumentBroker at run time when a QML
+// document is requested.
+//
+// A QmlDocumentBroker is a Qorb (Qkernel Object Request Broker) that extends
+// the Joa (Java Object Adapter) creating a generic document broker for
+// QML documents .
+//----------------------------------------------------------------------------
+public abstract class QmlDocumentHandler implements DocumentHandler
+{
+
+    public Daemon daemon;
+
+    public Class		thisClass 	= getClass();
+
+    final static String tagREPLACE = "REPLACE";
+    final static String tagIBLOCK  = "IBLOCK";
+    final static String tagINCLUDE = "INCLUDE";
+
+    final static String tagQML 	= "QML";
+    final static String tagINTERNAL = "INTERNAL";
+
+    final static String endTag[] =
+				{
+				    "BR",
+				    "HR",
+				    "IMG",
+				    "INPUT",
+				    "META",
+				    "LINK"
+				};			
+
+    final static String attrTEXT 	= "text";
+    final static String attrNAME	= "name";
+    final static String attrATTR	= "attr";
+    final static String attrVALUE	= "value";
+
+    final static String xmlHEADER = "<?xml version='1.0' encoding='UTF-8'?>";
+
+
+    public InputSource      _source_ = null;
+    public CharArrayWriter  _out_;
+    public Locator 	locator;
+
+    public Vector activeTags    = new Vector();
+    public Vector attrReference = new Vector();
+
+    public StringBuffer htmlBuffer   = new StringBuffer();
+    public StringBuffer textBuffer   = new StringBuffer();
+    public StringBuffer iblockBuffer = new StringBuffer();
+
+    public QMessage methodCache      = new QMessage();
+ 
+    public int blockMode = 0;
+    public int textMode =0;
+    public int elementCount=0;
+
+    public String sourceFilename = "";
+
+    public String myMime = "text/html\073 charset=UTF-8";
+
+    //------------------------------------------------
+    //
+    //------------------------------------------------
+    public abstract QMessage getDocument(QMessage r);
+
+
+
+    public void setMime(String mime)
+    {
+	myMime = mime;
+    }
+
+
+    public String getMime()
+    {
+	return(myMime);
+    }
+
+
+    //----------------------------------------------------
+    //
+    //----------------------------------------------------
+    public QMessage view(String myFile) throws Exception
+    {
+	String doc = null;
+
+	sourceFilename = myFile;
+
+	QMessage reply = new QMessage();
+
+	doc = parseToString();
+	if(doc == null)
+	{
+	    throw new Exception("Parse Error");
+	}
+
+	reply.put("Arg0", "html");
+	reply.put("Arg1", doc);
+	reply.put("Arg2", getMime());
+
+	return(reply);
+    }
+
+    //----------------------------------------------------
+    //
+    //----------------------------------------------------
+    public String viewString(String myFile) throws Exception
+    {
+	String doc = null;
+
+	sourceFilename = myFile;
+
+	doc = parseToString();
+	if(doc == null)
+	{
+	    throw new Exception("Parse Error");
+	}
+
+	return(doc);
+    }
+
+    //----------------------------------------------------
+    //
+    //----------------------------------------------------
+    public QMessage forward(String myUrl) 
+    {
+	QMessage reply = new QMessage();
+
+	reply.put("Arg0", "redirect");
+	reply.put("TargetUrl", myUrl);
+
+	return(reply);
+    }
+
+
+    //----------------------------------------------------
+    //
+    //----------------------------------------------------
+    public QMessage viewFromString(String doc) throws Exception
+    {
+	QMessage reply = new QMessage();
+
+	if(doc == null)
+	{
+	    throw new Exception("Null String Error");
+	}
+
+	reply.put("Arg0", "html");
+	reply.put("Arg1", doc);
+	reply.put("Arg2", getMime());
+
+	return(reply);
+    }
+
+    //----------------------------------------------------
+    //
+    //----------------------------------------------------
+    public QMessage viewFromFileObject(FileObject doc) throws Exception
+    {
+	QMessage reply = new QMessage();
+
+	if(doc == null)
+	{
+	    throw new Exception("Null FileObject Error");
+	}
+
+	reply.put("Arg0", "binary");
+	reply.put("Arg1", doc);
+	reply.put("Arg2", doc.getContentType());
+
+	return(reply);
+    }
+
+
+    //--------------------------------------
+    //
+    //--------------------------------------
+    public String parseToString()
+    {
+	String reply_doc;
+
+	_out_    = new CharArrayWriter();
+	_source_ = initSourceDocument();
+
+	parse();
+
+	reply_doc = _out_.toString();
+	_out_.close();
+
+	//daemon.event_log.SendMessage("out: " + reply_doc);
+
+        return(reply_doc);
+    }
+
+
+    //---------------------------------------------------------
+    //
+    //---------------------------------------------------------
+    public InputSource initSourceDocument()
+    {
+
+	return(new InputSource("file:"+ new File(sourceFilename) ));
+    }
+
+
+
+
+    public void parse( InputSource sourceNew, CharArrayWriter output )
+    {
+	_out_ 		= output;
+	_source_ 	= sourceNew;
+
+	parse();
+
+   }
+
+	public void parse()
+	{
+	    //daemon.event_log.SendMessage(" parse() called...");
+	    try
+		{
+			SAXParserFactory spf = SAXParserFactory.newInstance ();
+			//spf.setValidating (false);
+
+			SAXParser sp = spf.newSAXParser();
+			Parser _parser_ = sp.getParser ();
+
+			 _parser_.setDocumentHandler (this);
+			 _parser_.setErrorHandler (new QmlErrorHandler ());
+			 _parser_.parse ( _source_ );
+		}catch(Exception e)
+		{
+		    daemon.event_log.SendMessage("parse() failed because: "+e.getMessage() );
+		    return;
+		}
+	    //daemon.event_log.SendMessage(" parse() OK");
+
+	}
+
+
+    // here are all the SAX DocumentHandler methods
+
+    public void setDocumentLocator (Locator l)
+    {
+
+    }
+
+
+    public void startDocument ()
+    throws SAXException
+    {
+
+    }
+
+
+    public void endDocument ()
+    {
+
+    }
+
+
+    public void startElement (String tag, AttributeList attrs)
+    throws SAXException
+    {
+	tag = tag.toUpperCase();
+	if ( ++elementCount == 1 )
+	{
+		if ( tag.equals( tagQML ))
+		{
+		    //_emit( xmlHEADER );
+			return;
+		}
+		/*else if ( tag.equals( tagINTERNAL ))
+		{
+			return;
+		}*/
+		else
+			throw new SAXException( "Invalid root element" );
+	}
+
+	if ( tag.equals( tagINTERNAL ))
+	{
+		return;
+	}
+
+	_dumpBuffer();
+
+	//QML specific elements are not meant for output
+	if ( tag.equals( tagIBLOCK ))
+	{
+		//save everything into a buffer for futher processing
+		if ( blockMode++ == 0)
+		{
+			// we are at the begining of iblock,
+			// so we add iblock information into list of active tags for  a reference
+			// and create a new root element <internal>
+			_processQMLTag( tag, attrs );
+			processElement ( "INTERNAL", null );
+			return;
+		}
+
+	}
+
+	if (( blockMode == 0 ))
+	{
+		if ( tag.equals( tagREPLACE ) || tag.equals( tagINCLUDE) )
+		{
+			_processQMLTag( tag, attrs );
+			return;
+		}
+
+	}
+
+	processElement ( tag, attrs );
+
+    }
+
+	public void processElement (String tag, AttributeList attrs)
+    throws SAXException
+    {
+		_emit ("<");
+		_emit (tag);
+
+		//replacing HTML attributes with dynamic content
+		if (attrs != null)
+		{
+			for (int i = 0; i < attrs.getLength (); i++) {
+
+			_emit (" ");
+			String attrName = attrs.getName (i);
+			String attrValue = attrs.getValue (i);
+			_emit (attrName );
+			_emit ("=\"");
+			// XXX this doesn't quote '&', '<', and '"' in the
+			// way it should ... needs to scan the value and
+			// _emit '&amp;', '&lt;', and '&quot;' respectively
+
+			if ( blockMode == 0 )
+			{
+				//inmost element has the  highest precedence
+				for ( int ind = attrReference.size() - 1; ind >= 0; --ind )
+				{
+					if ( attrReference.elementAt( ind).equals( attrName ))
+					{
+						attrValue = replaceValue( ind, attrName, attrValue);
+						break;
+					}
+				}
+			}
+
+			_emit ( attrValue );
+			_emit ("\"");
+			}
+		}
+		_emit (">");
+	}
+
+	public void endElement (String tag)
+    throws SAXException
+    {
+		if ( --elementCount == 0 )
+			return;
+		if ( tag.equals( tagINTERNAL ))
+		{
+			return;
+		}
+
+		/*if ( textMode > 0 )
+		{
+			--textMode;
+			_emit(replaceValue( attrReference.size() - 1, attrTEXT, htmlBuffer.toString()));
+			htmlBuffer = new StringBuffer();
+		}
+		else*/
+
+		_dumpBuffer();
+
+		tag = tag.toUpperCase();
+
+
+		if ( tag.equals( tagIBLOCK ))
+		{
+			//end of iblock
+			if ( --blockMode  == 0)
+			{
+				iblockBuffer.append ("</INTERNAL>");
+				processIblock( );
+				return;
+			}
+		}
+		if ( blockMode == 0 )
+		{
+			if ( tag.equals( tagREPLACE ) || tag.equals( tagINCLUDE) )
+			{
+				_endQMLTag( );
+				return;
+			}
+		}
+
+	 
+	if(blockMode == 0)
+	{
+		for(int i=0; i < endTag.length; i++)
+		{
+		    String t = tag.toUpperCase();
+		    if(t.equals(endTag[i]))
+			return;
+		}
+	}
+
+		_emit ("</");
+		_emit (tag);
+		_emit (">");
+    }
+
+    public void characters (char buf [], int offset, int len)
+    throws SAXException
+    {
+	// NOTE:  this doesn't escape '&' and '<', but it should
+	// do so else the output isn't well formed XML.  to do this
+	// right, scan the buffer and write '&amp;' and '&lt' as
+	// appropriate.
+	htmlBuffer.append(buf, offset, len);
+
+    }
+
+	private String replaceValue( int index, String attrName, String valueOld)
+	throws SAXException
+	{
+		AttributeList list = new AttributeListImpl(
+				(AttributeList)activeTags.elementAt( index ));
+
+		String __methodName = list.getValue( attrNAME );
+		String __valueDefault = list.getValue( attrVALUE );
+
+		if ( __valueDefault == null )
+			__valueDefault = new String( valueOld );
+
+		return invokeMethod( __methodName, __valueDefault, attrName );
+	}
+
+	public String invokeMethod( String methodName, String valueDefault, String attrName )
+	throws SAXException
+	{
+	    String str ="";
+	    Method m = null;
+            Object[] args2 =null;
+
+		//existing value is replaced with string returned by the invoked method
+		try
+		{
+		    m = (Method)methodCache.get(methodName);
+		    if(m == null)
+		    {
+			Class[] arg = { Class.forName("java.lang.String" ), Class.forName("java.lang.String" ) };
+
+			//Method m = thisClass.getDeclaredMethod( methodName, arg );
+		        m = thisClass.getMethod( methodName, arg );
+		    }
+
+		    Object[] args = { valueDefault, attrName };
+		    args2 = args;
+		}
+		catch ( Exception e )
+		{
+		//	throw new SAXException( e.getClass().getName() +
+		//			": " + "String " + methodName + " ( String, String ); ");
+		_emit(valueDefault);
+
+		daemon.eventLog.sendMessage(1, "***WARNING*** "+methodName+"() does not exist! Using default stub."); 
+		return(str);
+
+		}
+		//------------------------------------------------
+		// Now, try to invoke the method
+		//------------------------------------------------
+		try
+		{
+		    str = (String)m.invoke( this, args2 );
+		    //--------------------------------------
+		    // Save Method in a cache for re-use
+		    //--------------------------------------
+		    methodCache.put(methodName, m);
+		}
+		catch ( Exception e )
+		{
+		    daemon.eventLog.sendMessage(1, e); 
+		}
+
+		return(str);
+	}
+
+    public void ignorableWhitespace (char buf [], int offset, int len)
+    throws SAXException
+    {
+	// this whitespace ignorable ... so we ignore it!
+    }
+
+    public void processingInstruction (String target, String data)
+    throws SAXException
+    {
+		_emit ("<?");
+		_emit (target);
+		_emit (" ");
+		_emit (data);
+		_emit ("?>");
+    }
+
+	public String getBlockText()
+	{
+		return iblockBuffer.toString();
+	}
+
+	public InputSource getBlock()
+	{
+		return new org.xml.sax.InputSource
+				(new CharArrayReader( iblockBuffer.toString().toCharArray()));
+	}
+
+	public void setQMLAttributes( Vector tags, Vector attrs )
+	{
+		activeTags = (Vector)tags.clone();
+		attrReference = (Vector)attrs.clone();
+	}
+
+	public void setState( Object obj )
+	{
+		try
+		{
+			Field[] fields = obj.getClass().getDeclaredFields();
+			for ( int i = 0; i < fields.length; ++i )
+			{
+				thisClass.getDeclaredField( fields[i].getName())
+						.set( this, fields[i].get(obj));
+			}
+
+			setQMLAttributes( ((QmlDocumentHandler)obj).activeTags, ((QmlDocumentHandler)obj).attrReference);
+
+		}
+		catch( Exception e )
+		{
+		    //put back
+		    //daemon.event_log.SendMessage("setState() failed because: "+e.getMessage() );
+		}
+	}
+
+    protected void printError( Exception e )
+    {
+	if ( e instanceof SAXParseException )
+	{
+	    String error = "** Parsing error"
+			   + ", line " + ((SAXParseException)e).getLineNumber ()
+			   + ", uri " + ((SAXParseException)e).getSystemId () +
+			   "\n   " + e.getMessage ();
+
+	     daemon.event_log.SendMessage(error);
+	}
+	else
+	{
+	    daemon.event_log.SendMessage("** Parsing error: "+ e.getMessage() );
+    }
+    }
+
+	// helpers ... exceptions are wraped  in SAX exceptions, to
+    // suit handler signature requirements
+	protected void processIblock()
+    throws SAXException
+    {
+		AttributeList list = new AttributeListImpl(
+				(AttributeList)activeTags.elementAt( activeTags.size() - 1 ));
+		String __methodName = list.getValue( attrNAME );
+
+		activeTags.removeElementAt(activeTags.size() - 1);
+		attrReference.removeElementAt(attrReference.size() - 1);
+
+		invokeIBMethod( __methodName );
+
+		iblockBuffer = new StringBuffer();
+	}
+
+	protected void invokeIBMethod( String methodName )
+	throws SAXException
+	{
+		try
+		{
+		/*
+			Class[] arg = { };
+
+			Method __method = thisClass.getDeclaredMethod( methodName, arg );
+			Object[] args = { };
+			__method.invoke( this, args );
+		*/
+
+		   //------------- Fix problem whith sub sub-classing --------------
+		    Method __method = thisClass.getMethod( methodName, (Class)null);
+		    __method.invoke( this, (Object)null);
+		}
+		catch ( Exception e )
+		{
+		//	throw new SAXException( e.getClass().getName() +
+		//			": " + "void " + methodName + " ( void ); ");
+		daemon.eventLog.sendMessage(1, "***WARNING*** "+methodName+"() does not exist or is broken! Using parseIBLOCK(1)"); 
+
+		parseIBLOCK(1);
+		}
+	}
+
+
+	private void _processQMLTag( String tag, AttributeList attrs )
+	throws SAXException
+	{
+		if (( attrReference.size() > 0 ) && ( textMode > 0))
+			throw new SAXException ( "No nesting allowed..." );
+
+		AttributeListImpl saveList = new AttributeListImpl( attrs );
+
+		//when an HTML attribue is a target for modification, save it in a vector
+		// attrReference for quick reference
+		String attribute = saveList.getValue (attrATTR );
+
+		//if there is no attributes to modify, text node is a target by default
+		if (( attribute == null ) && !tag.equals( tagIBLOCK))
+		{
+			++textMode;
+			/*if (++textMode > 1 )
+			{
+				processElement(tag, attrs );
+				return;
+			}*/
+		}
+
+		attrReference.addElement( ( attribute == null )? attrTEXT: attribute );
+		activeTags.addElement( (AttributeList)saveList );
+	}
+
+	private void _endQMLTag(  )
+	throws SAXException
+	{
+		if ( attrReference.elementAt( attrReference.size() - 1 ).equals(attrTEXT))
+		{
+			if(--textMode == 0 )
+			{
+
+			_emit(replaceValue( attrReference.size() - 1, attrTEXT, textBuffer.toString()));
+			textBuffer = new StringBuffer();
+			}
+
+		}
+		activeTags.removeElementAt(activeTags.size() - 1);
+		attrReference.removeElementAt(attrReference.size() - 1);
+
+	}
+
+    private void _emit (String s)
+    throws SAXException
+    {
+		if ( blockMode > 0 )
+		{
+                        StringBuffer buf = new StringBuffer(s);
+                        for( int i=0; i<buf.length(); i++ )
+			{
+			    if( buf.charAt(i) == '&' ) 
+				buf.insert( i+1, "amp;");
+			}
+                        iblockBuffer.append(buf.toString());
+                        return;
+
+			//iblockBuffer.append( s );
+			//return;
+		}
+		else if ( textMode > 0 )
+		{
+			textBuffer.append(s );
+			return;
+		}
+
+		try
+		{
+			_out_.write (s);
+			_out_.flush ();
+		} catch (IOException e) {
+			throw new SAXException ("I/O error", e);
+		}
+    }
+
+    private void _dumpBuffer( )
+    throws SAXException
+    {
+		_emit( htmlBuffer.toString() );
+		htmlBuffer= new StringBuffer();
+    }
+
+
+
+    public void parseIBLOCK(int loop_count)
+    {
+	for(int i =0; i < loop_count; i++)
+	{
+	    try
+	    {
+	    	parse( getBlock(), _out_ );
+
+	    }
+	    catch (Exception e)
+	    {
+	    	printError ( e );
+            }
+	}
+    }
+
+    public void parseIBLOCK()
+    {
+	try
+	{
+	    parse( getBlock(), _out_ );
+
+	}
+	catch (Exception e)
+	{
+	    printError ( e );
+        }
+    }
+
+
+  public QmlDocumentHandler(Daemon d)
+  {
+    daemon = d;
+  }
+
+}
+
