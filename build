@@ -34,7 +34,7 @@ then
    rm qkernel.jar
    echo "removed existing qkernel.jar..." 
 fi
-$JAR -cvf qkernel.jar ${JAR_DIR}*
+$JAR -Mcvf qkernel.jar ${JAR_DIR}*
 echo "compiling examples..." 
 $JAVAC -nowarn examples/*.java
 echo "done" 
