@@ -11,6 +11,7 @@ import java.lang.*;
 import java.util.*;
 import java.io.*;
 import com.qkernel.*;
+import com.qkernel.json.*;
 
 public final class SmsModem extends SmsProxy implements XircomEvents
 {
@@ -221,6 +222,10 @@ public final class SmsModem extends SmsProxy implements XircomEvents
 	daemon.event_log.SendMessage("Local SmsApplication restarted");
     }
 
+    public JSONObject jsonObjectRequest(QMessage request, JSONObject argvs)
+    {
+	return new JSONObject();
+    }
 
 
     //---------------------------------------------------------------------------------

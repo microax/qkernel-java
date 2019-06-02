@@ -1,4 +1,5 @@
 package com.qkernel;
+import com.qkernel.json.*;
 //
 // SmsProxy.java     SMS Proxy Abstract Class
 // ----------------------------------------------------------------------------
@@ -17,6 +18,10 @@ public abstract class SmsProxy extends Joa implements SmsService, SmsServiceEven
 
     public abstract void restart(SmsApplication app); 
 
+    public JSONObject jsonObjectRequest(QMessage request, JSONObject argvs)
+    {
+	return new JSONObject();
+    }
 
     public SmsProxy(String n, Daemon d)
     {

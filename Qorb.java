@@ -323,6 +323,7 @@ public abstract class Qorb
     // --------------------------------------------------------------------
     public abstract void invokeRequestIIOP(GIOPHeader h, GIOPAgent agent);
 
+
     //--------------------------------------------------------------------
     // Object Adapters extend the Qorb class...
     // It is the responsibility of the Object Adapter for
@@ -332,8 +333,6 @@ public abstract class Qorb
     // --------------------------------------------------------------------
     public abstract void invokeRequestHTTP(com.qkernel.http.HTTPServer.Request req,
 					   com.qkernel.http.HTTPServer.Response resp);
-    
-
 
     public Qorb(String i_name, Daemon i_daemon)
     {

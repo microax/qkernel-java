@@ -1,0 +1,40 @@
+#!/bin/bash
+######################################################
+# Simple brute force qkernel.jar build
+######################################################
+#
+JAR_DIR="../java9_jar/"
+#
+##### point these to your javac and jar directories ####
+JAVAC="/opt/install/java/bin/javac"
+JAR="/opt/install/java/bin/jar"
+#
+echo "brute force javac on all directories..." 
+$JAVAC -nowarn -d $JAR_DIR *.java
+$JAVAC -nowarn -d $JAR_DIR json/*.java
+$JAVAC -nowarn -d $JAR_DIR servlet/*.java
+$JAVAC -nowarn -d $JAR_DIR upload/*.java
+$JAVAC -nowarn -d $JAR_DIR license/*.java
+$JAVAC -nowarn -d $JAR_DIR comm/*.java
+$JAVAC -nowarn -d $JAR_DIR classloader/*.java
+###
+if [ -e ${JAR_DIR}com/qkernel ]
+then
+    DIR=${PWD}
+    cp qkext.jar ${JAR_DIR}com/
+    cd ${JAR_DIR}com/
+    $JAR -xvf qkext.jar
+    rm  qkext.jar
+    cd $DIR
+    echo "added qkernal extended classes..." 
+fi
+
+if [ -e qkernel.jar ]
+then
+   rm qkernel.jar
+   echo "removed existing qkernel.jar..." 
+fi
+$JAR -cvf qkernel.jar ${JAR_DIR}*
+echo "compiling examples..." 
+$JAVAC -nowarn examples/*.java
+echo "done" 
