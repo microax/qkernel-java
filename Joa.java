@@ -102,7 +102,7 @@ public abstract class Joa extends Qorb
 	    reply.put("message",s);
 	    resp.getHeaders().add("Content-Type", "application/json");
 	    resp.send(200, reply.toString(4));
-	    daemon.eventLog.sendMessage(s);
+	    daemon.eventLog.sendMessage(e);
             }
 	    catch(Exception e1)
 	    {

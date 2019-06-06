@@ -2,7 +2,7 @@ package com.qkernel.license;
 //----------------------------------------------------------------------------
 // Qkernel License key, generated via the library production manager.
 //
-// GenDate:	03-02-02
+// GenDate:	03-02-05
 // Operator:	mgill
 //----------------------------------------------------------------------------
 import java.lang.*;

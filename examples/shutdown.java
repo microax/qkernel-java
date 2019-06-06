@@ -1,5 +1,6 @@
 package examples;
 
+import java.lang.*;
 import java.io.*;
 import java.util.*;
 import com.qkernel.*;

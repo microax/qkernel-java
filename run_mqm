@@ -1,0 +1,9 @@
+#!/bin/bash
+######################################################
+# run the example service node in foreground 
+######################################################
+#
+##### point this to your java executable ####
+JAVA="/opt/install/java/bin/java"
+#
+$JAVA -cp ./qkernel.jar:$CLASSPATH examples/Mqm

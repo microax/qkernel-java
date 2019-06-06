@@ -10,13 +10,17 @@ JAVAC="/opt/install/java/bin/javac"
 JAR="/opt/install/java/bin/jar"
 #
 echo "brute force javac on all directories..." 
-$JAVAC -nowarn -d $JAR_DIR *.java
-$JAVAC -nowarn -d $JAR_DIR json/*.java
-$JAVAC -nowarn -d $JAR_DIR servlet/*.java
-$JAVAC -nowarn -d $JAR_DIR upload/*.java
-$JAVAC -nowarn -d $JAR_DIR license/*.java
-$JAVAC -nowarn -d $JAR_DIR comm/*.java
-$JAVAC -nowarn -d $JAR_DIR classloader/*.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR *.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR json/*.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR servlet/*.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR upload/*.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR license/*.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR comm/*.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR classloader/*.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR eobuilder/*.java
+echo "compiling examples..." 
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn examples/*.java
+$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn examples/RestTest.java
 ###
 if [ -e ${JAR_DIR}com/qkernel ]
 then
@@ -34,7 +38,8 @@ then
    rm qkernel.jar
    echo "removed existing qkernel.jar..." 
 fi
-$JAR -Mcvf qkernel.jar ${JAR_DIR}*
-echo "compiling examples..." 
-$JAVAC -nowarn examples/*.java
+cd ${JAR_DIR}
+$JAR -Mcvf qkernel.jar *
+cd $DIR
+cp ${JAR_DIR}/qkernel.jar .
 echo "done" 

@@ -73,8 +73,8 @@ public final class MqmConfig extends QMessage
     	//-------------------------------------------
     	// Number of User Agents and Channel Queues 
     	//-------------------------------------------
-    	putInt("obAgents",	20);
-    	putInt("qbAgents",	20);
+    	putInt("obAgents",	3);
+    	putInt("qbAgents",	3);
     	putInt("vqAgents",   	3);
     	putInt("ftpQueues",	3);
     	putInt("sshQueues",	3);
