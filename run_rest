@@ -3,7 +3,4 @@
 # run the example RestTest
 ######################################################
 #
-##### point this to your java executable ####
-JAVA="/opt/install/java/bin/java"
-#
-$JAVA -cp ./qkernel.jar:$CLASSPATH examples/RestTest
+java -cp classes/qkernel.jar:$CLASSPATH com/qkernel/examples/RestTest $1

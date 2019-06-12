@@ -3,7 +3,4 @@
 # run the example shutdown process 
 ######################################################
 #
-##### point this to your java executable ####
-JAVA="/opt/install/java/bin/java"
-#
-$JAVA -cp ./qkernel.jar:$CLASSPATH examples/shutdown
+java -cp classes/qkernel.jar:$CLASSPATH com/qkernel/examples/shutdown $1

@@ -1,0 +1,7 @@
+[
+    {
+        "route"     :"/api/test",
+        "className" :"com.qkernel.examples.Test",
+	"methodName":"testJson"
+    }
+]

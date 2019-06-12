@@ -3,43 +3,28 @@
 # Simple brute force qkernel.jar build
 ######################################################
 #
-JAR_DIR="../java9_jar/"
-#
-##### point these to your javac and jar directories ####
-JAVAC="/opt/install/java/bin/javac"
-JAR="/opt/install/java/bin/jar"
-#
 echo "brute force javac on all directories..." 
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR *.java
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR json/*.java
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR servlet/*.java
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR upload/*.java
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR license/*.java
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR comm/*.java
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR classloader/*.java
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn -d $JAR_DIR eobuilder/*.java
+javac -nowarn -d classes/ java/*.java
+javac -nowarn -d classes/ java/json/*.java
+javac -nowarn -d classes/ java/servlet/*.java
+javac -nowarn -d classes/ java/upload/*.java
+javac -nowarn -d classes/ java/license/*.java
+javac -nowarn -d classes/ java/comm/*.java
+javac -nowarn -d classes/ java/classloader/*.java
+echo "compiling eobuilder..." 
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH java/eobuilder/*.java
 echo "compiling examples..." 
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn examples/*.java
-$JAVAC -cp ./qkernel.jar:$CLASSPATH -nowarn examples/RestTest.java
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH java/examples/model/*.java
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH java/examples/*.java
 ###
-if [ -e ${JAR_DIR}com/qkernel ]
-then
-    DIR=${PWD}
-    cp qkext.jar ${JAR_DIR}com/
-    cd ${JAR_DIR}com/
-    $JAR -xvf qkext.jar
-    rm  qkext.jar
-    cd $DIR
-    echo "added qkernal extended classes..." 
-fi
 
-if [ -e qkernel.jar ]
+if [ -e classes/qkernel.jar ]
 then
-   rm qkernel.jar
+   rm classes/qkernel.jar
    echo "removed existing qkernel.jar..." 
 fi
-cd ${JAR_DIR}
-$JAR -Mcvf qkernel.jar *
+DIR=$PWD
+cd classes/
+jar -Mcvf qkernel.jar com/
 cd $DIR
-cp ${JAR_DIR}/qkernel.jar .
 echo "done" 

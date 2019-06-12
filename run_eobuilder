@@ -3,8 +3,6 @@
 # run the EOBuilder
 ######################################################
 #
-##### point this to your java executable ####
-JAVA="/opt/install/java/bin/java"
-#
-
-$JAVA -cp ./qkernel.jar:$CLASSPATH com/qkernel/eobuilder/EOBuilder $1 $2 $3 $4
+java -cp classes/qkernel.jar:$CLASSPATH com/qkernel/eobuilder/EOBuilder $1
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH java/examples/model/*.java
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH java/examples/*.java
