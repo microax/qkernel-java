@@ -3,5 +3,10 @@
         "route"     :"/api/test",
         "className" :"com.qkernel.examples.Test",
 	"methodName":"testJson"
+    },
+    {
+        "route"     :"/api/accountInfo",
+        "className" :"com.qkernel.examples.Test",
+	"methodName":"testJson"
     }
 ]
