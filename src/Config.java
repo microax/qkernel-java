@@ -38,6 +38,7 @@ public class Config extends QMessage
     	putBoolean("objectBrokerIIOP", 		true);
     	putBoolean("objectBrokerREST", 		true);
     	putBoolean("documentBroker",		false);
+    	putBoolean( "useSSL",                   false);
     	putString( "restObjectList", "rest_objects.json");
     	//-------------------------------------------
     	// Service Ports
@@ -179,6 +180,10 @@ public class Config extends QMessage
     //----------------------------------------
     // Broker Flags, and Agent config
     //---------------------------------------- 
+    public boolean useSSL()
+    {
+	return(getBoolean("useSSL"));
+    }
     public boolean hasObjectBroker()
     {
 	return(getBoolean("objectBrokerIIOP"));

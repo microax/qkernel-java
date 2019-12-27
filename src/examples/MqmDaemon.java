@@ -71,6 +71,7 @@ public class MqmDaemon extends Daemon
         int maxConn         	=config.getMaxConn();
         String dbPoolLog    	=config.getDbPoolLog();
         double dbResetTime  	=config.getDbResetTime();
+	eventLog.sendMessage("Preparing EO container using: "+jdbcDriver+" on "+connStr+" ...");	
 
 	mqmContainer = new MqmContainer();
 	mqmContainer.create( jdbcDriver, 

@@ -1,0 +1,6 @@
+#!/bin/bash
+######################################################
+# very simple curl REST call :-)
+######################################################
+#
+curl --user "dixie:iamthatdixie" --request GET http://localhost:9000/api/accountInfo

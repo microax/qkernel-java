@@ -13,5 +13,6 @@ public class UserAgentNode
 {
     public Eos    application;
     public Socket socket;
+    public Socket ssl_socket;
 }
 

@@ -14,12 +14,12 @@ public final class ZeroOne extends LicenseKey
 
     public String licenseTo()
     {
-	return("For exclusive use by MetaQ.io Corp.");
+	return("For exclusive use by metaQ.io");
     }
 
     public String nodeVersion()
     {
-	return("3.0");
+	return("1.0");
     }
 
     //--------------------------------------------------------

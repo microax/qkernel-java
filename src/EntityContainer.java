@@ -89,8 +89,8 @@ public abstract class EntityContainer
 	}
 	catch(Exception e)
 	{
-            Daemon.event_log.SendMessage("Error creating DbPool because: "
-					 + e.getMessage());
+            Daemon.log("Error creating DbPool because: "+ e.getMessage());
+            Daemon.log(e);
 	}
 
         //-----------------------------

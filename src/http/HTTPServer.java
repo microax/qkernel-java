@@ -807,7 +807,7 @@ public static class VirtualHost
         public void addHandler(ContextHandler handler, String... methods)
 	{
             if (methods.length == 0)
-                methods = new String[] { "GET", "POST" };
+                methods = new String[] { "GET", "POST", "PUT", "DELETE" };
             for (String method : methods)
 	    {
                 handlers.put(method, handler);
@@ -1543,6 +1543,24 @@ public class Request
         if (params == null)
             params = toMap(getParamsList());
         return params;
+    }
+    
+    /**
+     * Returns the request parameter by parameter name, which are parsed both from the query
+     *
+     * @return String value of parameter.
+     * @see #getParams()
+     */
+    public String getParam(String p)
+    {
+	String r ="";
+	try
+	{
+            Map m = this.getParams();
+	    r     = (String)m.get(p);
+	}
+	catch(Exception e){ r="";}
+	return(r);
     }
 
     /**

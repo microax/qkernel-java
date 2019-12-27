@@ -54,8 +54,8 @@ public final class QObjectBroker extends Joa
 	{
 	    String s = "***ERROR*** No QOBJECTclass defined!";
             daemon.eventLog.sendMessage(s);
-	    errorReply.put("status" ,"ERROR");
-	    errorReply.put("message",s);	    
+	    errorReply.put("json_status" ,"ERROR");
+	    errorReply.put("json_message",s);	    
 	    return errorReply;            
 	}
 	//--------------------------------------
@@ -78,8 +78,8 @@ public final class QObjectBroker extends Joa
 	{
 	    String s = "***ERROR*** "+clazz+" Does not exist or could  not be loaded";
             daemon.eventLog.sendMessage(s);
-	    errorReply.put("status" ,"ERROR");
-	    errorReply.put("message",s);	    
+	    errorReply.put("json_status" ,"ERROR");
+	    errorReply.put("json_message",s);	    
 	    return errorReply;
 	}
 	//---------------------------------------------
@@ -92,10 +92,10 @@ public final class QObjectBroker extends Joa
 	}
 	catch(Exception e)
 	{
-	    String s = "***ERROR*** "+clazz+"."+m+" No Such Method";
-            daemon.eventLog.sendMessage(s);
-	    errorReply.put("status" ,"ERROR");
-	    errorReply.put("message",s);	    
+	    String s = "***ERROR*** "+clazz+"."+m+" threw an exception check log for details";
+            daemon.eventLog.sendMessage(e);
+	    errorReply.put("json_status" ,"ERROR");
+	    errorReply.put("json_message",s);	    
 	    return errorReply;
 	}
 	//---------------------
@@ -222,8 +222,8 @@ public final class QObjectBroker extends Joa
     public QObjectBroker(String name, Daemon daemon)
     {
 	super(name, daemon);
-        setHTTP();
 
+        setHTTP();
 	debug = false;
     }
 }

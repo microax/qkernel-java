@@ -214,6 +214,25 @@ public class Request
     }
 
     /**
+     * Returns the request parameter by parameter name, which are parsed both from the query
+     *
+     * @return String value of parameter.
+     * @see #getParams()
+     */
+    public String getParam(String p)
+    {
+	String r ="";
+	try
+	{
+            Map m = this.getParams();
+	    r     = (String)m.get(p);
+	}
+	catch(Exception e){ r="";}
+	return(r);
+    }
+
+
+    /**
      * Returns the absolute (zero-based) content range value read
      * from the Range header. If multiple ranges are requested, a single
      * range containing all of them is returned.

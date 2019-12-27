@@ -191,7 +191,7 @@ public class JoaProxy extends Object
 	}
         catch (Exception e )
 	{
-	    // System.out.println("Could not connect because: " + e.getMessage());
+	    System.out.println("Could not connect because: " + e.getMessage());
 	}
     }
 

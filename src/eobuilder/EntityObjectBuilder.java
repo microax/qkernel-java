@@ -35,6 +35,9 @@ import com.qkernel.SqlSafe;
  *    generate data for.
  *  </ul>
  *
+ * @since Michael Gill<address>mgill@metaqueue.net</address> 11/15/19 
+ *        Added postgreSQL support.
+ *
  * @since Nathan Oertel<address>oertel@metaqueue.net</address> 1/15/06 - Nathan
  *        Oertel, Added conversion to sqlsafe for other useful fields including
  *        blob...
@@ -55,6 +58,7 @@ public class EntityObjectBuilder
     public String password = "";
     public String CATALOG = login;
     public String schema= login;
+    public EOBuilderConfig config = null;
     /**
      *  Description of the Field
      */
@@ -821,7 +825,14 @@ public class EntityObjectBuilder
         retval += "     * @param id a "+pkType+" representing the primary key\n";
         retval += "     ****************************************************\n";
         retval += "     */\n";
+	if(pkType.equals("Int"))
+	{
         retval += "    public void delete(int id)\n";
+        }
+	else
+	{
+        retval += "    public void delete(String id)\n";
+	}
         retval += "    {\n";
         retval += "        String query;\n";
 	if(pkType.equals("Int"))
@@ -969,6 +980,10 @@ public class EntityObjectBuilder
      */
     public String getQualifiedField(String label, String field, int type)
     {
+	String prePend ="";
+	if(config.getString("dbType").equals("postgres"))
+	   prePend="E";
+
         String retval = "";
         field = format(field);
         if (useMorphers)
@@ -991,28 +1006,28 @@ public class EntityObjectBuilder
                 retval = "\").append(" + retval + ").append(\"";
                 break;
             case Types.CHAR:
-                retval = "'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
+                retval = prePend+"'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
                 break;
             case Types.VARCHAR:
-                retval = "'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
+                retval = prePend+"'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
                 break;
             case Types.LONGVARCHAR:
-                retval = "'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
+                retval = prePend+"'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
                 break;
             case Types.BLOB:
-                retval = "'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
+                retval = prePend+"'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
                 break;
             case Types.BINARY:
-                retval = "'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
+                retval = prePend+"'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
                 break;
             case Types.VARBINARY:
-                retval = "'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
+                retval = prePend+"'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
                 break;
             case Types.LONGVARBINARY:
-                retval = "'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
+                retval = prePend+"'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
                 break;
             case Types.TIMESTAMP:
-                retval = "'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
+                retval = prePend+"'\").append(SqlSafe.sqlSafe( " + retval + ")).append(\"'";
                 break;
             default:
                 retval = "'\").append(" + retval + ").append(\"'";
@@ -1053,9 +1068,9 @@ public class EntityObjectBuilder
         retval += "     */\n";
         retval += "    public void load(int id)\n";
         retval += "    {\n";
-        retval += "       String qs=\n";
-        retval += "           \"SELECT * FROM " + tablename + " WHERE " + pk + "=\"+id;\n\n";
-        retval += "       executeQuery(qs,\"setEntityC\");\n";
+        retval += "     String qs=\n";
+        retval += "         \"SELECT * FROM " + tablename + " WHERE " + pk + "=\"+id;\n\n";
+        retval += "     executeQuery(qs,\"setEntityC\");\n";
         retval += "    }\n\n";
         retval += "    /****************************************************\n";
         retval += "     * This function loads an individual record into the\n";
@@ -1078,9 +1093,9 @@ public class EntityObjectBuilder
         retval += "     */\n";
         retval += "    public void load(String id)\n";
         retval += "    {\n";
-        retval += "       String qs=\n";
-        retval += "           \"SELECT * FROM " + tablename + " WHERE " + pk + "='\"+id+\"'\";\n\n";
-        retval += "       executeQuery(qs,\"setEntityC\");\n";
+        retval += "     String qs=\n";
+        retval += "         \"SELECT * FROM " + tablename + " WHERE " + pk + "='\"+id+\"'\";\n\n";
+        retval += "     executeQuery(qs,\"setEntityC\");\n";
         retval += "    }\n\n";
         retval += "    /****************************************************\n";
         retval += "     * This function loads an individual record into the\n";
@@ -1239,9 +1254,13 @@ public class EntityObjectBuilder
 
 	if(pk == null)
 	{
-	    pk = (String)p.get(tablename+"Id");
+	    pk = (String)p.get("id");
 	    if(pk == null)
-	        pk ="nopk";		
+	        pk = (String)p.get(tablename+"Id");                
+	        if(pk == null)
+		    pk = config.getString(tablename);
+		    if(pk == "")
+	                pk ="nopk";
 	} 
 	return(pk);
     }

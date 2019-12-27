@@ -37,11 +37,13 @@ public abstract class Qorb
 {
     public  GIOPAgent user_agent[];
     public  TcpServer tcp_server;
+    public  TcpSslServer tcp_ssl_server;    
     public  Daemon daemon; 
     public  String MyName;
     public  boolean remote_interface;
     public  int poolSize;
     public  QMessage objectRoutes = new QMessage();
+    public  boolean require_auth;
     
     public boolean stats     = false;
     public long totalRequests=0;
@@ -74,7 +76,7 @@ public abstract class Qorb
 
 	if(protocol == HTTP || protocol == HTTPS)
 	{
-            http = new HTTPServer(port);    
+            http = new HTTPServer(port);
             host = http.getVirtualHost(null); // default host
             host.addContext("/", new com.qkernel.http.HTTPServer.ContextHandler()
             {
@@ -89,89 +91,51 @@ public abstract class Qorb
         //-------------------------------
         // Startup a TCP server
         //-------------------------------
-        tcp_server = new TcpServer(("TCP"+ port), daemon);
-	InetAddress addr = daemon.getInetAddress();
-	tcp_server.reportReg=false;
-
-	if(addr == null)
-            tcp_server.start(port, num_agents);
-	else
-            tcp_server.start(port, num_agents, addr);
-	
-        //--------------------------------------------------------------
-        // Create GIOP User Agents and 
-        // associate them with our TCP transport and orb
-        //--------------------------------------------------------------
-        user_agent = new GIOPAgent[num_agents];
-
-        for( int i =0; i < num_agents; i++)
+        if(protocol == HTTPS)
 	{
-            user_agent[i] = new GIOPAgent((MyName+" Agent" + i), 
+            tcp_ssl_server = new TcpSslServer(("TCP/SSL"+ port), daemon);
+	    InetAddress addr = daemon.getInetAddress();
+	    tcp_ssl_server.reportReg=false;
+            if(addr == null)
+                tcp_ssl_server.start(port, num_agents);
+	    else
+                tcp_ssl_server.start(port, num_agents, addr);
+            //--------------------------------------------------------------
+            // Create GIOP User Agents and 
+            // associate them with our TCP/SSL transport and orb
+            //--------------------------------------------------------------
+            user_agent = new GIOPAgent[num_agents];
+            for( int i =0; i < num_agents; i++)
+	    {
+                user_agent[i] = new GIOPAgent((MyName+" Agent" + i), 
 					  daemon, this);
-	    user_agent[i].reportInit =false;
-	    user_agent[i].start(tcp_server, i);
+	        user_agent[i].reportInit =false;
+	        user_agent[i].start(tcp_ssl_server, i);
+            }
         }
-	remote_interface = true;
-	daemon.eventLog.sendMessage("Initialized "+num_agents+ " "+MyName+" agents using "+protocolName[protocol]);
-    }
-
-
-    //--------------------------------------------------------------------
-    // This is same as above but also requires specification 
-    // of the socket backlog
-    //---------------------------------------------------------------------
-    public void start(int i_port, int i_num_sockets, int i_num_agents)
-    {
-        int port         =i_port;
-	int num_sockets  =i_num_sockets;
-        int num_agents   =i_num_agents;
-	poolSize         =num_agents;
-
-	if(num_agents == 0 || num_sockets == 0)
+        else
 	{
-	    start();
-	    return;
-	}
-	
-	if(protocol == HTTP || protocol == HTTPS)
-	{
-            http = new HTTPServer(port);    
-            host = http.getVirtualHost(null); // default host
-            host.addContext("/", new com.qkernel.http.HTTPServer.ContextHandler()
-            {
-	        public int serve(com.qkernel.http.HTTPServer.Request req,
-				 com.qkernel.http.HTTPServer.Response resp) throws IOException
-		{
-		    invokeRequestHTTP(req, resp);
-                    return 0;
-		}
-            });
-	}
-        //-------------------------------
-        // Startup a TCP server
-        //-------------------------------
-        tcp_server = new TcpServer(("TCP"+ port), daemon);
-	InetAddress addr = daemon.getInetAddress();
-	tcp_server.reportReg=false;
-
-	if(addr == null)
-            tcp_server.start(port, num_sockets);
-	else
-            tcp_server.start(port, num_sockets, addr);
-	
-        //--------------------------------------------------------------
-        // Create GIOP User Agents and 
-        // associate them with our TCP transport and orb
-        //--------------------------------------------------------------
-        user_agent = new GIOPAgent[num_agents];
-
-        for( int i =0; i < num_agents; i++)
-	{
-            user_agent[i] = new GIOPAgent((MyName+" Agent" + i), 
+            tcp_server = new TcpServer(("TCP"+ port), daemon);
+	    InetAddress addr = daemon.getInetAddress();
+	    tcp_server.reportReg=false;
+            if(addr == null)
+                tcp_server.start(port, num_agents);
+	    else
+                tcp_server.start(port, num_agents, addr);
+            //--------------------------------------------------------------
+            // Create GIOP User Agents and 
+            // associate them with our TCP transport and orb
+            //--------------------------------------------------------------
+            user_agent = new GIOPAgent[num_agents];
+            for( int i =0; i < num_agents; i++)
+	    {
+                user_agent[i] = new GIOPAgent((MyName+" Agent" + i), 
 					  daemon, this);
-	    user_agent[i].reportInit =false;
-	    user_agent[i].start(tcp_server, i);
+	        user_agent[i].reportInit =false;
+	        user_agent[i].start(tcp_server, i);
+            }
         }
+	
 	remote_interface = true;
 	daemon.eventLog.sendMessage("Initialized "+num_agents+ " "+MyName+" agents using "+protocolName[protocol]);
     }
@@ -195,7 +159,10 @@ public abstract class Qorb
 
 	if(remote_interface)
 	{
-	    count = tcp_server.getThreadCount();
+	    if(protocol == HTTPS)
+	        count = tcp_ssl_server.getThreadCount();
+	    else
+	        count = tcp_server.getThreadCount();		
 	}
 
 	return(count);
@@ -214,7 +181,10 @@ public abstract class Qorb
 
 	if(remote_interface)
 	{
-	    used = poolSize - tcp_server.getThreadCount();
+	    if(protocol == HTTPS)
+	        used = poolSize - tcp_ssl_server.getThreadCount();
+	    else
+	        used = poolSize - tcp_server.getThreadCount();
 	}
 
 	return(used);
@@ -244,7 +214,6 @@ public abstract class Qorb
 	return(poolSize);
     }
 
-
     //--------------------------------------------------------------------------------
     // METHOD 	getAverageCallTime()
     //
@@ -261,7 +230,6 @@ public abstract class Qorb
 	return(rtn);
     }
 
-
     //--------------------------------------------------------------------------------
     // METHOD 	getTotalRequests()
     //
@@ -272,8 +240,6 @@ public abstract class Qorb
     {
 	return(totalRequests);
     }
-
-
 
     //--------------------------------------------------------------------------------
     // METHOD 	setStatsOn()
@@ -348,7 +314,14 @@ public abstract class Qorb
     {
 	isWebServer =true;
     }
-
+    public void requireAuth()
+    {
+	require_auth =true;
+    }
+    public boolean isAuthRequired()
+    {
+	return (require_auth);
+    }
 
 
     //--------------------------------------------------------------------
@@ -376,11 +349,6 @@ public abstract class Qorb
 	daemon = i_daemon;
 	MyName = i_name;
 	stats  = false;
+	require_auth=false;
     }
 }
-
-
-
-
-
-

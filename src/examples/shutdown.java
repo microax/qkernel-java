@@ -31,6 +31,10 @@ public class shutdown
 	catch(Exception e)
 	{
 	    System.out.println("Server not running");
+	    /*StringWriter sw = new StringWriter(); 
+	    e.printStackTrace(new PrintWriter(sw)); 
+	    String message = sw.toString(); 
+	    System.out.println(message); */
 	    System.exit(0);
 	}
         System.out.println("Shutdown status = "+r.getParameter("status"));

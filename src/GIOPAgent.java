@@ -15,8 +15,10 @@ public final class GIOPAgent extends Fsm
 {
     public Qorb orb;
 
-    private TcpServer tcp;
+    private TcpServer    tcp;
+    private TcpSslServer ssl;
     private Socket sock;
+    private Socket ssl_sock;
     private UserAgentNode ua;
     private DataOutputStream ostream;
     private DataInputStream istream;
@@ -30,16 +32,18 @@ public final class GIOPAgent extends Fsm
     public static final int GIOP_CONNECTED = 2;
     public static final int IIOP_SESSION   = 3;
     public static final int HTTP_SESSION   = 4;
+    public static final int HTTPS_SESSION  = 5;
 
     //---- Events
-    public static final int INIT_OK     	= 0;
-    public static final int GET_IIOP_REQUEST_CMD= 11;
-    public static final int GET_HTTP_REQUEST_CMD= 17;
-    public static final int PROCESS_REQUEST_CMD	= 12;
-    public static final int CLOSE_CMD  		= 13;
-    public static final int IO_DEVICE_ERROR	= 14;
-    public static final int REQUEST_FAILED	= 15;
-    public static final int AGENT_CLOSED        = 16;
+    public static final int INIT_OK     	 = 0;
+    public static final int GET_IIOP_REQUEST_CMD = 11;
+    public static final int GET_HTTP_REQUEST_CMD = 17;
+    public static final int GET_HTTPS_REQUEST_CMD= 18;
+    public static final int PROCESS_REQUEST_CMD	 = 12;
+    public static final int CLOSE_CMD  		 = 13;
+    public static final int IO_DEVICE_ERROR	 = 14;
+    public static final int REQUEST_FAILED	 = 15;
+    public static final int AGENT_CLOSED         = 16;
 
     public void SetStateTable()
     {
@@ -56,6 +60,7 @@ SetEvent( GIOP_READY,		GET_HTTP_REQUEST_CMD,	GIOP_READY,		"GetReqIdle"	);
 
 SetEvent( GIOP_CONNECTED,	GET_IIOP_REQUEST_CMD,	IIOP_SESSION,		"GetIIOPRequest");
 SetEvent( GIOP_CONNECTED,	GET_HTTP_REQUEST_CMD,	HTTP_SESSION,		"GetHTTPRequest");
+SetEvent( GIOP_CONNECTED,	GET_HTTPS_REQUEST_CMD,	HTTPS_SESSION,	        "GetHTTPSRequest");
 SetEvent( GIOP_CONNECTED,	CLOSE_CMD,		GIOP_READY,		"Close"		);
 SetEvent( GIOP_CONNECTED,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"	        );
 SetEvent( GIOP_CONNECTED,	AGENT_CLOSED,	        GIOP_READY,		"DoNothing"	);
@@ -73,20 +78,39 @@ SetEvent( HTTP_SESSION,		AGENT_CLOSED,	        GIOP_READY,		"DoNothing"	);
 SetEvent( HTTP_SESSION,		REQUEST_FAILED,		GIOP_READY,		"RequestFailed"	);
 SetEvent( HTTP_SESSION,		IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
 
+SetEvent( HTTPS_SESSION,        GET_HTTPS_REQUEST_CMD,	HTTPS_SESSION,		"GetHTTPRequest");
+SetEvent( HTTPS_SESSION,        CLOSE_CMD,		GIOP_READY,		"Close"		);
+SetEvent( HTTPS_SESSION,        AGENT_CLOSED,	        GIOP_READY,		"DoNothing"	);
+SetEvent( HTTPS_SESSION,	REQUEST_FAILED,		GIOP_READY,		"RequestFailed"	);
+SetEvent( HTTPS_SESSION,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
+
 //------------------------------------------------------------------------------------------------
     }
 
     public void TcpConnected()
     {
         ua  = (UserAgentNode) LastEvent.Data;
-        sock= ua.socket;
-
+        if(orb.protocol == orb.HTTPS)
+            ssl_sock= ua.ssl_socket;
+        else
+	    sock=ua.socket;
+	
         //daemon.event_log.SendMessage("Remote client connected...");
 
         try
         {
-            sock.setSoTimeout(10000);    // timeout in milliseconds
-            sock.setTcpNoDelay(true);    // we buffer anyway, so improve latency 
+	    // timeout in milliseconds
+	    // and we buffer anyway, to improve latency
+            if(orb.protocol == orb.HTTPS)
+	    {
+            ssl_sock.setSoTimeout(10000);
+            ssl_sock.setTcpNoDelay(true);
+            }
+            else
+            {
+            sock.setSoTimeout(10000);
+            sock.setTcpNoDelay(true);
+            }
             if(orb.protocol == orb.IIOP) // HTTP creates it's own streams...
 	    {
                 ostream = new DataOutputStream(sock.getOutputStream());
@@ -105,15 +129,19 @@ SetEvent( HTTP_SESSION,		IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
 	}
 
     	EventMessage evt = new EventMessage();
-        if(orb.protocol == orb.HTTP || orb.protocol == orb.HTTPS)
+        if(orb.protocol == orb.HTTPS)
 	{
-	    
+	    evt.Event=GET_HTTPS_REQUEST_CMD;
+	}
+        else if(orb.protocol == orb.HTTP)
+	{
 	    evt.Event=GET_HTTP_REQUEST_CMD;
 	}
 	else
 	{
 	    evt.Event=GET_IIOP_REQUEST_CMD;
 	}
+	
 	SendMessage(evt);	    
     }
 
@@ -216,13 +244,23 @@ SetEvent( HTTP_SESSION,		IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
 	catch (IOException ignore) {}
     }
 
-
-    //    public void ProcessHTTP()
-    //{
-        // daemon.event_log.SendMessage("ProcessRequest called...");
-
-    //	orb.invokeRequestHTTP(this);
-    // }
+    public void GetHTTPSRequest()
+    {
+        try
+	{
+	try
+	{
+	    orb.http.handleConnection(ssl_sock.getInputStream(), ssl_sock.getOutputStream());
+	}
+	finally
+        {
+	    EventMessage evt = new EventMessage();
+	    evt.Event=CLOSE_CMD;
+	    SendMessage(evt);	    
+        }
+	}
+	catch (IOException ignore) {}
+    }
 
 
     
@@ -272,6 +310,12 @@ SetEvent( HTTP_SESSION,		IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
 
     public void Close()
     {
+	if(orb.protocol == orb.HTTPS)
+	{
+	    closeSSL();
+	    return;
+	}
+	
         EventMessage evt = new EventMessage();
         evt.Event=AGENT_CLOSED;
         SendMessage(evt);	    
@@ -297,7 +341,7 @@ SetEvent( HTTP_SESSION,		IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
             try
             {
                 // RFC7230#6.6 - close socket gracefully
-	        sock.shutdownOutput(); // half-close socket (only output)
+	        sock.shutdownOutput();  // half-close socket (only output)
                 orb.http.transfer(sock.getInputStream(), null, -1); // consume input
             }
             finally
@@ -314,12 +358,49 @@ SetEvent( HTTP_SESSION,		IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
     }
 
 
+
+
+    public void closeSSL()
+    {
+        EventMessage evt = new EventMessage();
+        evt.Event=AGENT_CLOSED;
+        SendMessage(evt);	    
+	try
+	{
+            try
+            {
+                // RFC7230#6.6 - close socket gracefully
+	        ssl_sock.shutdownOutput(); // half-close socket (only output)
+                orb.http.transfer(ssl_sock.getInputStream(), null, -1); // consume input
+            }
+            finally
+            {
+                ssl_sock.close(); // and finally close socket fully
+	    }
+	}
+	catch (IOException ignore) {}	
+        ssl.Release(ua);
+
+        //daemon.event_log.SendMessage("Connection Released...");
+    }
+
+
+    
     public void start(TcpServer i_tcp, int chan)
     {
         super.start();
         channel = chan;
         tcp = i_tcp;
         tcp.Register(this);
+        timer = new Timer(daemon, this);
+    }
+
+    public void start(TcpSslServer i_ssl, int chan)
+    {
+        super.start();
+        channel = chan;
+        ssl = i_ssl;
+        ssl.Register(this);
         timer = new Timer(daemon, this);
     }
 

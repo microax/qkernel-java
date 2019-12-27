@@ -83,23 +83,26 @@ public abstract class Daemon
             System.exit(0);
 	}
 
+	Date d  = new Date();  
+        int year=d.getYear()+1900; 
 	//---------------------------------------------------------------
 	// Get version of this Java Virtual Machine...
 	//---------------------------------------------------------------
-	jvmVersion = ManagementFactory.getRuntimeMXBean().getVmVersion();
-	
+	String specVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
+	String specVendor  = ManagementFactory.getRuntimeMXBean().getSpecVendor();
+	String specName    = ManagementFactory.getRuntimeMXBean().getSpecName();
+	String vmBuild     = ManagementFactory.getRuntimeMXBean().getVmVersion();
+	jvmVersion =specVendor+" "+specVersion+" (build "+vmBuild+")";
 	String banner   ="*******************************************************************";
-	String version  ="MetaQueue Application Node Release "+nodeVer;
-	String copyright="Copyright 2017 MetaQ.io -- All Rights Reserved";
+	String version  ="metaQ Application Node Release "+nodeVer;
+	String copyright="Copyright "+year+" metaQ.io Corp. -- All Rights Reserved";
 	String license  ="License key:"+lkey+" -- "+useBy+"\n"; 
         String runtime  ="JVM version is "+jvmVersion;
-	String contact  ="For technical support:\nEmail help@MetaQ.io\n";
 
 	System.out.println(banner);
 	System.out.println(version);
 	System.out.println(copyright);
 	System.out.println(license);
-	//System.out.println(contact);
 	System.out.println(runtime);
 	System.out.println(banner);
 

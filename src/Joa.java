@@ -57,12 +57,14 @@ public abstract class Joa extends Qorb
 	JSONObject reply;
 	QMessage   r = new QMessage();
 
+	if(isAuthRequired())
+	{
 	//-----------------------------------------
 	// Set username:password http "BASIC AUTH" 
 	// authentication parameters from Request
 	//-----------------------------------------
 	setBasicAuth(r, req);
-
+        }
         //-----------------------------------------
 	// Route request REST URI to object/method
 	//-----------------------------------------
@@ -91,8 +93,8 @@ public abstract class Joa extends Qorb
 	    String s = "Object/Authorzation error";
 
             JSONObject reply  = new JSONObject();
-	    reply.put("status" ,"ERROR");
-	    reply.put("message",s);
+	    reply.put("json_status" ,"ERROR");
+	    reply.put("json_message",s);
 	    resp.getHeaders().add("Content-Type", "application/json");
 	    resp.send(200, reply.toString(4));
 	    daemon.eventLog.sendMessage(e);

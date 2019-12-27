@@ -12,11 +12,14 @@ public abstract class QObject extends Object
 
     public Daemon daemon;
 
-
-  public QObject(Daemon d)
-  {
-    daemon = d;
-  }
-
+    public void log(String message)
+    {
+	daemon.eventLog.sendMessage(message);
+    }
+    
+    public QObject(Daemon d)
+    {
+      daemon = d;
+    }
 }
 

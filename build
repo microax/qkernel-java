@@ -3,28 +3,76 @@
 # Simple brute force qkernel.jar build
 ######################################################
 #
-echo "brute force javac on all directories..." 
-javac -nowarn -d classes/ java/*.java
-javac -nowarn -d classes/ java/json/*.java
-javac -nowarn -d classes/ java/servlet/*.java
-javac -nowarn -d classes/ java/upload/*.java
-javac -nowarn -d classes/ java/license/*.java
-javac -nowarn -d classes/ java/comm/*.java
-javac -nowarn -d classes/ java/classloader/*.java
+code=-1
+echo "building qkernel package..." 
+javac -nowarn -d classes/ src/*.java
+code=$?
+if [ $code -eq 0 ]; then
+echo "building qkernel.json package..." 
+javac -nowarn -d classes/ src/json/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
+echo "building qkernel.servlet package..." 
+javac -nowarn -d classes/ src/servlet/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
+echo "building qkernel.upload package..." 
+javac -nowarn -d classes/ src/upload/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
+echo "building qkernel.license package..." 
+javac -nowarn -d classes/ src/license/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
+echo "building qkernel.batch package..." 
+javac -nowarn -d classes/ src/batch/*.java
+fi
+if [ $code -eq 0 ]; then
+echo "building qkernel.comm package..." 
+javac -nowarn -d classes/ src/comm/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
+echo "building qkernel.classloader package..." 
+javac -nowarn -d classes/ src/classloader/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
+echo "compiling qkernel.http package..." 
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH src/http/HTTPServer.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
 echo "compiling eobuilder..." 
-javac -nowarn -d classes/ -cp classes/:$CLASSPATH java/eobuilder/*.java
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH src/eobuilder/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
 echo "compiling examples..." 
-javac -nowarn -d classes/ -cp classes/:$CLASSPATH java/examples/model/*.java
-javac -nowarn -d classes/ -cp classes/:$CLASSPATH java/examples/*.java
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH src/examples/model/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
+javac -nowarn -d classes/ -cp classes/:$CLASSPATH src/examples/*.java
+code=$?
+fi
 ###
 
-if [ -e classes/qkernel.jar ]
-then
+if [ $code -eq 0 ] && [ -e classes/qkernel.jar ]; then
    rm classes/qkernel.jar
    echo "removed existing qkernel.jar..." 
 fi
-DIR=$PWD
-cd classes/
-jar -Mcvf qkernel.jar com/
-cd $DIR
-echo "done" 
+if [ $code -eq 0 ]; then
+  DIR=$PWD
+  cd classes/
+  echo "creating qkernel.jar" 
+  jar -Mcf qkernel.jar com/
+  cd $DIR
+  echo "done" 
+else
+  echo "***ERRORS in build"
+fi

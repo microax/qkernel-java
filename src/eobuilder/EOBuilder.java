@@ -43,6 +43,7 @@ public class EOBuilder
             eob.packageName=modelPackage;
             eob.useMorphers=false;
             eob.outputDir=modelDir;
+	    eob.config=config;
             eob.doBuild();
 
             /** build the value objects */
