@@ -30,7 +30,12 @@ public class Config extends QMessage
     	//----------------------------------------------
     	// IP address this Service Node binds to
     	//----------------------------------------------
-    	put("myIp",	"localhost");
+    	put("myIp",	"wilddog");
+    	put("loIp",	"localhost");
+    	put("sslKeyStore",         "keystore.jks");
+    	put("sslKeyStorePassword", "password");
+    	put("sslKeyStoreType",     "JKS");
+    	put("sslKeyAlias",         "");
     	//----------------------------------------------
     	// Enabled Brokers and Containers and Channels 
     	//----------------------------------------------
@@ -100,6 +105,27 @@ public class Config extends QMessage
     {
 	return(getString("myIp"));
     }
+    public String getLoIpAddress()
+    {
+	return(getString("loIp"));
+    }
+    public String getSslKeyStore()
+    {
+	return(getString("sslKeyStore"));
+    }
+    public String getSslKeyStorePassword()
+    {
+	return(getString("sslKeyStorePassword"));
+    }
+    public String getSslKeyStoreType()
+    {
+	return(getString("sslKeyStoreType"));
+    }
+    public String getSslKeyAlias()
+    {
+	return(getString("sslKeyAlias"));
+    }
+    
     //----------------------------------------
     // JDBC and connection pool stuff
     //---------------------------------------- 

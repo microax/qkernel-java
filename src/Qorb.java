@@ -272,6 +272,26 @@ public abstract class Qorb
     {
         try
 	{
+	    //-------------------------------------------------------------
+	    // Check if using SSL here
+	    // (here may not be best place to check but here we are :-) )
+	    //-------------------------------------------------------------
+            if(config.useSSL())
+	    {
+		String keyStore = Paths.get(config.getSslKeyStore()).toString();
+		String keyPass  = config.getSslKeyStorePassword();
+		String keyType  = config.getSslKeyStoreType();
+		String keyAlias = config.getSslKeyAlias();
+                System.setProperty("javax.net.ssl.keyStore",        keyStore);
+                System.setProperty("javax.net.ssl.keyStorePassword",keyPass);
+                System.setProperty("javax.net.ssl.keyStoreType",    keyType);
+                System.setProperty("javax.net.ssl.keyAlias",        keyAlias);
+		daemon.log("javax.net.ssl.keyStore="+keyStore);
+		daemon.log("javax.net.ssl.keyStorePassword="+keyPass);
+		daemon.log("javax.net.ssl.keyStoreType="+keyType);
+		daemon.log("javax.net.ssl.keyAlias="+keyAlias);
+            }
+	
             String jsonFile = config.getRestObjectList();
 	    //-------------------------------------------
 	    // Gotta be at least java 7 to do this :-)
@@ -289,11 +309,11 @@ public abstract class Qorb
                 this.objectRoutes.putJSONObject(json.getString("route"), json);
 	    }
 	    
-	    daemon.eventLog.sendMessage("Loaded "+l+" REST Object Routes...");
+	    daemon.log("Loaded "+l+" REST Object Routes...");
 	}
 	catch(Exception e)
 	{
-	    daemon.eventLog.sendMessage("ERROR*** Could not load REST Object Routes!!!");
+	    daemon.log("ERROR*** Could not load REST Object Routes!!!");
 	}
     }
 

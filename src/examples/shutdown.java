@@ -16,7 +16,7 @@ public class shutdown
     {
 	QMessage r = null;
         Config   c = new Config(argvs);
-	String  ip = c.getIpAddress();
+	String  ip = c.getLoIpAddress();
 	int   port = c.getQbusPort();
 	
 	MqmUtilDelegate p = new MqmUtilDelegate(ip,port);

@@ -1,8 +1,8 @@
 [
     {
-        "route"     :"/api/test",
+        "route"     :"/api/ping",
         "className" :"com.qkernel.examples.Test",
-	"methodName":"testJson"
+	"methodName":"ping"
     },
     {
         "route"     :"/api/accountInfo",

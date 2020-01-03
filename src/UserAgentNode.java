@@ -8,11 +8,12 @@ package com.qkernel;
 // ----------------------------------------------------------------------------
 //
 import java.net.*;
+import javax.net.ssl.*;
 
 public class UserAgentNode
 {
     public Eos    application;
     public Socket socket;
-    public Socket ssl_socket;
+    public SSLSocket ssl_socket;
 }
 

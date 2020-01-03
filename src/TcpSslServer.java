@@ -4,12 +4,15 @@ package com.qkernel;
 // ----------------------------------------------------------------------------
 // History:
 // --------
+// 12/31/19 M. Gill     Fixed SSL support
 // 09/12/02 M. Gill	Support Socket backlog > user agent pool size.
 // 09/07/02 M. Gill	Add getThreadCount().
 // 01/16/02 M. Gill	Allow binding to InetAddress.
 // 09/20/97 M. Gill     Initial creation.
 // ----------------------------------------------------------------------------
 import java.net.*;
+import javax.net.*;
+import javax.net.ssl.*;
 
 public final class TcpSslServer extends Eos
 {
@@ -19,7 +22,7 @@ public final class TcpSslServer extends Eos
 
     protected Queue ready_list;
     protected Queue accept_list;
-    protected ServerSocket server_socket;
+    protected SSLServerSocket server_socket;
     protected Semaphore ua_lock;
     protected static final int TCP_OPEN_CMD          =10;
     protected static final int TCP_CLOSE_CMD         =11;
@@ -71,18 +74,17 @@ public final class TcpSslServer extends Eos
         try
         {
             //---This blocks untill there is a new connection
-
 	    accept_list.Enqueue(server_socket.accept() );
         }
         catch(Exception ecpt)
         {
-            daemon.eventLog.sendMessage("Error accepting socket");
+            daemon.log(ecpt);
 	    //----------------------------------------------------
 	    // We still send Ok, because we want to try again...
 	    //----------------------------------------------------
-            EventMessage e1 = new EventMessage();
+            /*EventMessage e1 = new EventMessage();
             e1.Event        = TCP_ACCEPT_OK;
-    	    SendMessage(e1);
+    	    SendMessage(e1);*/
 	    return;
 
         }
@@ -96,7 +98,7 @@ public final class TcpSslServer extends Eos
 	//----------------------------------------
     	// Setup UA handle's socket.
     	//----------------------------------------
-    	user_agent.ssl_socket = (Socket)accept_list.Dequeue();
+    	user_agent.ssl_socket = (SSLSocket)accept_list.Dequeue();
     	//----------------------------------------
     	// Notify User Agent that it's connected.
     	//----------------------------------------
@@ -163,7 +165,7 @@ public final class TcpSslServer extends Eos
     //---------------------------------------------------------------------------
     public void Release(UserAgentNode user)
     {
-	Socket ssl_sock;
+	SSLSocket ssl_sock;
 
         try
         {
@@ -172,10 +174,10 @@ public final class TcpSslServer extends Eos
         }
         catch(Exception e)
 	{
-            daemon.event_log.SendMessage("Could not close socket because: " + e.getMessage());
+            daemon.log(e);
 	}
 
-	if((ssl_sock = (Socket)accept_list.Dequeue()) != null)
+	if((ssl_sock = (SSLSocket)accept_list.Dequeue()) != null)
 	{
 	    //----------------------------------------
     	    // Setup UA handle's socket.
@@ -210,11 +212,12 @@ public final class TcpSslServer extends Eos
         super.start();
         try
         {
-   	    server_socket   = new ServerSocket(portnumber, number_connect);
+	    SSLServerSocketFactory factory=(SSLServerSocketFactory)SSLServerSocketFactory.getDefault(); 
+   	    server_socket   = (SSLServerSocket)factory.createServerSocket(portnumber, number_connect);
         }
         catch( Exception Ecpt) 
         {
-            daemon.event_log.SendMessage("Could not create Server Socket because: "+Ecpt.getMessage());
+            daemon.log(Ecpt);
         }
 
     	ready_list	= new Queue();
@@ -240,11 +243,12 @@ public final class TcpSslServer extends Eos
         super.start();
         try
         {
-   	    server_socket   = new ServerSocket(portnumber, number_connect, addr);
+	    SSLServerSocketFactory factory=(SSLServerSocketFactory)SSLServerSocketFactory.getDefault(); 
+   	    server_socket   = (SSLServerSocket)factory.createServerSocket(portnumber, number_connect, addr);
         }
         catch( Exception Ecpt) 
         {
-            daemon.event_log.SendMessage("Could not create Server Socket because: "+Ecpt.getMessage());
+            daemon.log(Ecpt);
         }
 
     	ready_list	= new Queue();

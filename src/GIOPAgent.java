@@ -4,6 +4,7 @@ package com.qkernel;
 // ----------------------------------------------------------------------------
 // History:
 // --------
+// 01/02/20 M. Gill        Tweaked error logging
 // 04/07/18 M. Gill        Renamed GIOP added HTTP support
 // 09/15/99 M. Gill        Initial creation.
 // ----------------------------------------------------------------------------
@@ -62,7 +63,7 @@ SetEvent( GIOP_CONNECTED,	GET_IIOP_REQUEST_CMD,	IIOP_SESSION,		"GetIIOPRequest")
 SetEvent( GIOP_CONNECTED,	GET_HTTP_REQUEST_CMD,	HTTP_SESSION,		"GetHTTPRequest");
 SetEvent( GIOP_CONNECTED,	GET_HTTPS_REQUEST_CMD,	HTTPS_SESSION,	        "GetHTTPSRequest");
 SetEvent( GIOP_CONNECTED,	CLOSE_CMD,		GIOP_READY,		"Close"		);
-SetEvent( GIOP_CONNECTED,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"	        );
+SetEvent( GIOP_CONNECTED,	IO_DEVICE_ERROR,	GIOP_READY,		"DeviceError"	);
 SetEvent( GIOP_CONNECTED,	AGENT_CLOSED,	        GIOP_READY,		"DoNothing"	);
 
 SetEvent( IIOP_SESSION,		PROCESS_REQUEST_CMD,	IIOP_SESSION,		"ProcessIIOP"   );
@@ -82,7 +83,7 @@ SetEvent( HTTPS_SESSION,        GET_HTTPS_REQUEST_CMD,	HTTPS_SESSION,		"GetHTTPR
 SetEvent( HTTPS_SESSION,        CLOSE_CMD,		GIOP_READY,		"Close"		);
 SetEvent( HTTPS_SESSION,        AGENT_CLOSED,	        GIOP_READY,		"DoNothing"	);
 SetEvent( HTTPS_SESSION,	REQUEST_FAILED,		GIOP_READY,		"RequestFailed"	);
-SetEvent( HTTPS_SESSION,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
+SetEvent( HTTPS_SESSION,	IO_DEVICE_ERROR,	GIOP_READY,		"DeviceError"	);
 
 //------------------------------------------------------------------------------------------------
     }
@@ -123,8 +124,7 @@ SetEvent( HTTPS_SESSION,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
             evt.Event=IO_DEVICE_ERROR;
             SendMessage(evt);	    
 
-            daemon.event_log.SendMessage("***ERROR*** TcpConnected() failed because: "+
-					 e.getMessage());
+            daemon.log(e);
 	    return;
 	}
 
@@ -248,9 +248,12 @@ SetEvent( HTTPS_SESSION,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
     {
         try
 	{
-	try
-	{
+	    daemon.log("SSL socket aquired...");
 	    orb.http.handleConnection(ssl_sock.getInputStream(), ssl_sock.getOutputStream());
+	}
+	catch(Exception e)
+	{
+            daemon.log(e);
 	}
 	finally
         {
@@ -258,8 +261,6 @@ SetEvent( HTTPS_SESSION,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
 	    evt.Event=CLOSE_CMD;
 	    SendMessage(evt);	    
         }
-	}
-	catch (IOException ignore) {}
     }
 
 
@@ -267,13 +268,8 @@ SetEvent( HTTPS_SESSION,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
     public void SendReply( byte[] b, byte type, int len)
     {
         GIOPHeader h = new GIOPHeader();
-
-        //daemon.event_log.SendMessage("SendReply() called...");
-
         try
         {
-	    //daemon.event_log.SendMessage("GIOP output message size="+len);
-
             ostream.writeByte('G');
             ostream.writeByte('I');
             ostream.writeByte('O');
@@ -362,29 +358,30 @@ SetEvent( HTTPS_SESSION,	IO_DEVICE_ERROR,	GIOP_READY,		"Close"		);
 
     public void closeSSL()
     {
+        try
+        {
+            ssl_sock.close();
+        }
+	catch(Exception e)
+	{
+	    daemon.log(e);
+	}
+        ssl.Release(ua);
+	daemon.log("SSL socket and UA released...");
         EventMessage evt = new EventMessage();
         evt.Event=AGENT_CLOSED;
         SendMessage(evt);	    
-	try
-	{
-            try
-            {
-                // RFC7230#6.6 - close socket gracefully
-	        ssl_sock.shutdownOutput(); // half-close socket (only output)
-                orb.http.transfer(ssl_sock.getInputStream(), null, -1); // consume input
-            }
-            finally
-            {
-                ssl_sock.close(); // and finally close socket fully
-	    }
-	}
-	catch (IOException ignore) {}	
-        ssl.Release(ua);
-
-        //daemon.event_log.SendMessage("Connection Released...");
     }
 
 
+    public void DeviceError()
+    {
+	daemon.log("Device Error***");
+	if(orb.protocol == orb.HTTPS)
+	    ssl.Release(ua);
+        else
+	    tcp.Release(ua);
+    }
     
     public void start(TcpServer i_tcp, int chan)
     {

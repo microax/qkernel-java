@@ -30,6 +30,7 @@ public class MqmDaemon extends Daemon
     public  static MqmConfig         config;
     public  static MqmContainer      mqmContainer;
     public  static QmlDocumentBroker documentBroker;
+    public  static QObjectBroker     restObjectBroker;
     public  static QObjectBroker     objectBroker;
 
     //--------------------------------------------------------------------------------
@@ -52,11 +53,6 @@ public class MqmDaemon extends Daemon
 	//---------------------------------------
 	config = new MqmConfig(this , argvs);
 	register(CONFIG, config);
-
-	//-------------------------------------------
-	// Set InetAddress for this Service Node
-	//-------------------------------------------
-	setInetAddress(config.getIpAddress());
 
 	if(config.hasEntityContainer())
 	{
@@ -106,21 +102,36 @@ public class MqmDaemon extends Daemon
 	{
 	    int rbPort		=config.getBusinessPort();
 	    int rbAgents	=config.getBusinessAgentNum();
+
+	    //----------------------------------------------
+	    // Set PUBLIC InetAddress for this Service Node
+	    //----------------------------------------------
+	    setInetAddress(config.getIpAddress());
+	    
 	   //-------------------------------------------------------
 	   // Create the REST Object Broker 
 	   //-------------------------------------------------------
-	    objectBroker = new QObjectBroker("REST Object Broker", this);
-            objectBroker.setHTTP();
-	    objectBroker.setObjectRoutes((Config)config);
-	    objectBroker.start(rbPort, rbAgents);
+	    restObjectBroker = new QObjectBroker("REST Object Broker", this);
+            if(config.useSSL())
+	    restObjectBroker.setHTTPS();
+	    else
+	    restObjectBroker.setHTTP();
+	    restObjectBroker.setObjectRoutes((Config)config);
+	    restObjectBroker.start(rbPort, rbAgents);
 	}
 	if(config.hasObjectBroker())
 	{
 	    int obPort		=config.getQbusPort();
 	    int obAgents	=config.getQbusAgentNum();
-	   //-------------------------------------------------------
-	   // Create the Object Broker ( handles all QBUS requests)
-	   //-------------------------------------------------------
+
+	    //----------------------------------------------
+	    // Set local InetAddress for this Service Node
+	    //----------------------------------------------
+	    setInetAddress(config.getLoIpAddress());
+
+	    //-------------------------------------------------------
+	    // Create the Object Broker ( handles all QBUS requests)
+	    //-------------------------------------------------------
 	    objectBroker = new QObjectBroker("Qbus Object Broker", this);
             objectBroker.setIIOP();
 	    objectBroker.start(obPort, obAgents);
@@ -129,6 +140,12 @@ public class MqmDaemon extends Daemon
 	{
 	    int qbPort		=config.getViewPort();
 	    int qbAgents	=config.getViewAgentNum();
+
+	    //----------------------------------------------
+	    // Set local InetAddress for this Service Node
+	    //----------------------------------------------
+	    setInetAddress(config.getLoIpAddress());
+
 	    //---------------------------------------------------
 	    // Create the Document Broker
 	    //---------------------------------------------------

@@ -42,6 +42,14 @@ public class Test extends BusinessObject
 	return(reply);
     }
 
+    public JSONObject ping(com.qkernel.http.HTTPServer.Request req)
+    {
+	daemon.eventLog.sendMessage(req.getPath()+" called...");
+	JSONObject reply = new JSONObject();
+	reply.put("status" ,     "OK");
+	reply.put("message",     "pong");
+	return(reply);
+    }
 
     //--------------------------------------------------------------------------------
     // METHOD 	Test()
