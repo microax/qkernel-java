@@ -14,12 +14,12 @@ public final class ZeroOne extends LicenseKey
 
     public String licenseTo()
     {
-	return("For exclusive use by Sapien Networks.");
+	return("General Public License Granted by MetaQ.io");
     }
 
     public String nodeVersion()
     {
-	return("1.0");
+	return("2.0");
     }
 
     //--------------------------------------------------------

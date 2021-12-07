@@ -1,6 +1,0 @@
-#!/bin/bash
-######################################################
-# run the example RestTest
-######################################################
-#
-java -cp classes/qkernel.jar:$CLASSPATH com/qkernel/examples/RestTest $1

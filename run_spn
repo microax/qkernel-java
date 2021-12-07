@@ -1,6 +1,0 @@
-#!/bin/bash
-######################################################
-# run the example service node in foreground 
-######################################################
-#
-java -cp classes/qkernel.jar:$CLASSPATH com.qkernel.examples/Mqm $1

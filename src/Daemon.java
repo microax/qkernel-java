@@ -96,8 +96,8 @@ public abstract class Daemon
 	String vmBuild     = ManagementFactory.getRuntimeMXBean().getVmVersion();
 	jvmVersion =specVendor+" "+specVersion+" (build "+vmBuild+")";
 	String banner   ="*******************************************************************";
-	String version  ="SPN Application Node Release "+nodeVer;
-	String copyright="Copyright "+year+" Sapien Network Corp. -- All Rights Reserved";
+	String version  ="Core Application Node Release "+nodeVer;
+	String copyright="Copyright "+year+" MetaQ.io -- All Rights Reserved";
 	String license  ="License key:"+lkey+" -- "+useBy+"\n"; 
         String runtime  ="JVM version is "+jvmVersion;
 
