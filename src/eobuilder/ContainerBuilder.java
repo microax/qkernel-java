@@ -17,6 +17,7 @@ public class ContainerBuilder
     public String CATALOG = login;
     public String schema= login;
     public String importName = "";
+    public EOBuilderConfig config = null;
     /**
      *  Description of the Field
      */
@@ -125,6 +126,9 @@ public class ContainerBuilder
             while (tables.next())
 	    {
                 nextTable = tables.getString("TABLE_NAME");
+		if(config.getString(nextTable).equals("exclude"))
+		    continue;
+		
         	System.out.println("Adding "+nextTable+" to Container...");
 		entityDefs      += "    public static eo_"+nextTable+" "+nextTable+";\n";
 

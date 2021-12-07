@@ -15,8 +15,8 @@ import java.io.*;
 
 public class Config extends QMessage
 {
-    private String confFile = "examples.conf";
-    private Daemon daemon   = null;
+    public String confFile = "examples.conf";
+    public Daemon daemon   = null;
     
     //--------------------------------------------------------------------------------
     // METHOD   putROMConfig()
@@ -42,8 +42,10 @@ public class Config extends QMessage
     	putBoolean("entityContainer", 		false);
     	putBoolean("objectBrokerIIOP", 		true);
     	putBoolean("objectBrokerREST", 		true);
-    	putBoolean("documentBroker",		false);
+	putBoolean("mqnChannel", 		false);	
+    	//putBoolean("documentBroker",		false);
     	putBoolean( "useSSL",                   false);
+    	putBoolean( "useEnvSecrets",            true);
     	putString( "restObjectList", "rest_objects.json");
     	//-------------------------------------------
     	// Service Ports
@@ -51,7 +53,7 @@ public class Config extends QMessage
     	int basePort	= 9000; 
     	putInt("rbPort",	basePort + 0);
     	putInt("obPort",	basePort + 1);
-    	putInt("qbPort",   	basePort + 2);
+    	//putInt("qbPort",   	basePort + 2);
     	//-----------------------------------
     	// Default config. params for DbPool 
     	//-----------------------------------
@@ -60,37 +62,37 @@ public class Config extends QMessage
     	putInt("minConn",	5);
     	putInt("maxConn",	5);
     	put("dbPoolLog",	"");
-	put("dbName",           "examplesDB");
+	//put("dbName",           "examplesDB");
     	putDouble("dbResetTime",60); 
 	//-------------------------------------------
     	// EntityObjects defaults
     	//-------------------------------------------
-	putString("containerPackageName", "model");
-	putString("containerClassName",   "Example");
-	putString("containerDir",         "examples/model/");
-	putString("modelPackageName",     "model");
-	putString("modelDir",             "examples/model/");
+	//putString("containerPackageName", "model");
+	//putString("containerClassName",   "Example");
+	//putString("containerDir",         "examples/model/");
+	//putString("modelPackageName",     "model");
+	//putString("modelDir",             "examples/model/");
 	//-------------------------------------------
     	// Number of User Agents and Channel Queues 
     	//-------------------------------------------
     	putInt("rbAgents",	5);
     	putInt("obAgents",	3);
-    	putInt("qbAgents",	3);
+    	//putInt("qbAgents",	3);
     	//-----------------------------------
     	// Default serial devices
     	//-----------------------------------
-    	put("device",		 "COM1");
-    	put("ttyDevice", 	"/dev/ttyS0");
+    	//put("device",		 "COM1");
+    	//put("ttyDevice", 	"/dev/ttyS0");
     	//------------------------------------
     	// This only used for GSM modems
     	//-----------------------------------
-    	put("scaNumber", 	"+15555555555");
+    	//put("scaNumber", 	"+15555555555");
         //-----------------------------------------------
         // Respositories and as such
         //-----------------------------------------------
-        put("docRoot",	"./mqm.qml/");
-        put("homeUrl",	"localhost");
-        put("homeClass","/request/ExampleDocument?QMLclass=view.Home");
+        //put("docRoot",	"./mqm.qml/");
+        //put("homeUrl",	"localhost");
+        //put("homeClass","/request/ExampleDocument?QMLclass=view.Home");
     }
 
     //---------------------------------------------------------------------------------
@@ -115,7 +117,7 @@ public class Config extends QMessage
     }
     public String getSslKeyStorePassword()
     {
-	return(getString("sslKeyStorePassword"));
+	return(getSecretString("sslKeyStorePassword"));
     }
     public String getSslKeyStoreType()
     {
@@ -143,7 +145,7 @@ public class Config extends QMessage
     }
     public String getConnPassword()
     {
-	return(getString("dbPassword"));
+	return(getSecretString("dbPassword"));
     }
     public int getMinConn()
     {
@@ -218,6 +220,34 @@ public class Config extends QMessage
     {
 	return(getBoolean("objectBrokerREST"));
     }
+    public boolean hasMqnChannel()
+    {
+	return(getBoolean("mqnChannel"));
+    }
+    public int getNumMqnChannels()
+    {
+	return(getInt("numMqnChannels"));
+    }
+    public int getNumMqnChannelQueues(int q)
+    {
+	return(getInt("mqnChannelQueues"+q));
+    }
+    public String getMqnChannelName(int q)
+    {
+	return(getString("mqnChannelName"+q));
+    }
+    public int getMqnChannelMinutes(int q)
+    {
+	return(getInt("mqnChannelMinutes"+q));
+    }
+    public int getMqnChannelCount(int q)
+    {
+	return(getInt("mqnChannelCount"+q));
+    }
+    public String getMqnChannelCronTab(int q)
+    {
+	return(getString("mqnChannelCronTab"+q));
+    }
     public boolean hasDocumentBroker()
     {
 	return(getBoolean("documentBroker"));
@@ -251,7 +281,7 @@ public class Config extends QMessage
 	return(getString("restObjectList"));
     }
 
-    protected void log(String e)
+    public void log(String e)
     {
 	if(this.daemon != null)
 	    this.daemon.eventLog.sendMessage(e);	    

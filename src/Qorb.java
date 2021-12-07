@@ -287,7 +287,8 @@ public abstract class Qorb
                 System.setProperty("javax.net.ssl.keyStoreType",    keyType);
                 System.setProperty("javax.net.ssl.keyAlias",        keyAlias);
 		daemon.log("javax.net.ssl.keyStore="+keyStore);
-		daemon.log("javax.net.ssl.keyStorePassword="+keyPass);
+		//daemon.log("javax.net.ssl.keyStorePassword="+keyPass);
+		daemon.log("javax.net.ssl.keyStorePassword=****");
 		daemon.log("javax.net.ssl.keyStoreType="+keyType);
 		daemon.log("javax.net.ssl.keyAlias="+keyAlias);
             }

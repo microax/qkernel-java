@@ -90,7 +90,7 @@ public abstract class Mos extends Thread
          {  
 	    msgSema.Wait();
 
-	    if(daemon.waitShutdown() && (getMessageCount() == 0))
+	    if(daemon.waitShutdown() && (msgQueue.Count() == 0))
 	    {   if( !MyName.equals("EVL") )
 	        {  daemon.event_log.SendMessage("Shutdown Complete...");
 		   daemon.mosExit(this);
@@ -113,7 +113,6 @@ public abstract class Mos extends Thread
     }
     
 
-
     //--------------------------------------------------------------------------------
     // METHOD 	sendMessage()
     //
@@ -129,14 +128,12 @@ public abstract class Mos extends Thread
     //--------------------------------------------------------------------------------
     public void sendMessage(Object o)
     {
-        MessageNode message = new MessageNode();	// Create a Message Node
-	message.thread      = Thread.currentThread();	// Get calling thread
-	message.timestamp   = new Date();		// Get current date/time
-	message.object      = o;			// Get sending Message
-
-        PostMessage(message);				// Post node to queue
+        MessageNode message = new MessageNode();      // Create a Message Node
+	message.thread      = Thread.currentThread(); // Get calling thread
+	message.timestamp   = new Date();	      // Get current date/time
+	message.object      = o;		      // Get sending Message
+        this.postMessage(message);		      // Post node to queue
     }
-
 
     //--------------------------------------------------------------------------------
     // METHOD 	SendMessage()
@@ -153,18 +150,11 @@ public abstract class Mos extends Thread
     //--------------------------------------------------------------------------------
     public void SendMessage(Object o)
     {
-        MessageNode message = new MessageNode();	// Create a Message Node
-	message.thread      = Thread.currentThread();	// Get calling thread
-	message.timestamp   = new Date();		// Get current date/time
-	message.object      = o;			// Get sending Message
-
-        PostMessage(message);				// Post node to queue
+        sendMessage(o);
     }
 
-
-
     //--------------------------------------------------------------------------------
-    // METHOD	PostMessage()
+    // METHOD	postMessage()
     //
     // PURPOSE:	Post messages into message queue.
     //
@@ -176,19 +166,15 @@ public abstract class Mos extends Thread
     //
     // RETURN:	None.
     //--------------------------------------------------------------------------------
-    private void PostMessage(MessageNode m)
+    private void postMessage(MessageNode m)
     {
 	if(daemon.waitShutdown())
-   	{    if( !MyName.equals("EVL") )
-		return;
+   	{   if( !MyName.equals("EVL") )
+	        return;
 	}
-
         msgQueue.Enqueue(m);
         msgSema.Signal();
     }
-
-
-
 
     //--------------------------------------------------------------------------------
     // METHOD	shutdownSignal()

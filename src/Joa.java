@@ -78,6 +78,11 @@ public abstract class Joa extends Qorb
 	//-----------------------------------------------
 	// send response headers...
 	//-----------------------------------------------
+	resp.getHeaders().add("Access-Control-Allow-Origin", "*");
+	resp.getHeaders().add("Access-Control-Allow-Credentials", "true");
+	resp.getHeaders().add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE");
+	resp.getHeaders().add("Access-Control-Max-Age", "3600");
+	resp.getHeaders().add("Access-Control-Allow-Headers", "Content-Type, Accept, authorization");
 	resp.getHeaders().add("Content-Type", "application/json");
 
 	//-----------------------------------

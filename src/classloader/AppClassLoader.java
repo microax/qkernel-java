@@ -38,6 +38,7 @@ import javax.naming.directory.DirContext;
 import javax.naming.NamingException;
 import javax.naming.NamingEnumeration;
 import javax.naming.NameClassPair;
+@SuppressWarnings( "unchecked" )
 
 /*
 import com.core.loader.naming.ResourceAttributes;

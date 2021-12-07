@@ -69,7 +69,8 @@ public class RestProxy extends Object
     {
 	return(auth);
     }
-        
+
+    
    /**
     * post request 
     *
@@ -84,15 +85,91 @@ public class RestProxy extends Object
             String url = this.getUrl()+api_function;
             URL obj    = new URL(url);
 	    HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-
+            con.setDoOutput(true);
+            /*if(!this.getAuth().equals(""))
+	    {
+		String encoding = Base64.getEncoder().encodeToString((this.getAuth()).getBytes("UTF-8"));
+	        con.setRequestProperty("Authorization", "Basic "+encoding);
+		log("Basic "+encoding);
+		}*/
+            if(!this.getAuth().equals(""))
+	    {
+		String encoding = this.getAuth();
+	        con.setRequestProperty("Authorization", "Basic "+encoding);
+		log("Basic "+encoding);
+	    }
             con.setRequestMethod("POST");
 	    con.setRequestProperty("User-Agent","Java/1.8");
 	    con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
+	    con.setRequestProperty("Content-Type", "application/json");
+            String urlParameters = "";
+            String rawData = params.getString("RAWDATA");
+	    DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+            if(rawData.equals(""))
+	    {
+	        Set set = params.entrySet();
+	        Iterator it = set.iterator();
+	        while (it.hasNext())
+	        {
+	            Map.Entry entry = (Map.Entry) it.next();
+                    urlParameters = urlParameters+entry.getKey()+"="+entry.getValue()+"&";
+	        }
+	        log("URL parameters: "+urlParameters);	    
+	        wr.writeBytes(urlParameters);
+	    }
+	    else
+	    {
+	        log("Body data: "+rawData);
+		wr.writeBytes(rawData);
+	    }
+	    wr.flush();
+	    wr.close();
+
+	    int responseCode  = con.getResponseCode();
+	    BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+	    String inputLine;
+	    StringBuffer response = new StringBuffer();
+
+            while ((inputLine = in.readLine()) != null)
+	    {
+	        response.append(inputLine);
+	    }
+	    in.close();
+	    log("Response OK");
+            return(response.toString());
+        }
+	catch(Exception e)
+	{
+	    //log("errorCode:500 Server Error");
+	    //daemon.event_log.sendMessage(e);
+	    daemon.event_log.sendMessage(e.getMessage());
+	    return("{\"errorCode\":\"500\", \"errorMessage\":\"REST Server Error\"}");
+	}
+    }
+
+    /**
+    * put request 
+    *
+    * @param  api_function
+    * @param  params
+    */
+    public String put(String api_function, QMessage params)
+    {
+	log("PUT request function:"+api_function);
+        try
+        {
+            String url = this.getUrl()+api_function;
+            URL obj    = new URL(url);
+	    HttpURLConnection con = (HttpURLConnection) obj.openConnection();
             if(!this.getAuth().equals(""))
 	    {
 		String encoding = Base64.getEncoder().encodeToString((this.getAuth()).getBytes("UTF-8"));
 	        con.setRequestProperty("Authorization", "Basic "+encoding);
 	    }
+            con.setRequestMethod("PUT");
+	    con.setRequestProperty("User-Agent","Java/1.8");
+	    con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
+	    con.setRequestProperty("Content-Type", "application/json");
             String urlParameters = "";
 	    Set set = params.entrySet();
 	    Iterator it = set.iterator();
@@ -125,9 +202,9 @@ public class RestProxy extends Object
 	{
 	    log("errorCode:500 Server Error");
 	    return("{\"errorCode\":\"500\", \"errorMessage\":\"REST Server Error\"}");
-	}
+	}	
     }
-
+    
     
    /**
     * get request 
@@ -141,7 +218,11 @@ public class RestProxy extends Object
         try
         {
 	    String url =getUrl()+api_function;
-	    String urlParameters ="?";
+	    String urlParameters;
+	    if(!params.isEmpty())
+		urlParameters ="?";
+	    else
+		urlParameters ="";
 	    Set set = params.entrySet();
 	    Iterator it = set.iterator();
 	    while (it.hasNext())
@@ -153,12 +234,77 @@ public class RestProxy extends Object
             URL obj = new URL(url);
 	    log("URL parameters: "+urlParameters);
             HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-
+            if(!this.getAuth().equals(""))
+	    {
+		String encoding = Base64.getEncoder().encodeToString((this.getAuth()).getBytes("UTF-8"));
+	        con.setRequestProperty("Authorization", "Basic "+encoding);
+	    }
             con.setRequestMethod("GET");
             con.setRequestProperty("User-Agent", "Java/1.8");
-            if(this.getAuth() != "")
-	        con.setRequestProperty("Authorization", this.getAuth());
+            StringBuffer response = new StringBuffer();
+            int responseCode = con.getResponseCode();
+            if(responseCode == HttpURLConnection.HTTP_OK)
+	    {	
+                BufferedReader in = new BufferedReader( new InputStreamReader(con.getInputStream()));
+                String inputLine;
 
+                while ((inputLine = in.readLine()) != null)
+                {
+                    response.append(inputLine);
+                }
+                in.close();
+	        log("Response OK");
+                return(response.toString());
+	    }
+	    else
+	    {
+	        log("Response FAIL");
+                return(response.toString());		
+	    }
+	}
+	catch(Exception e)
+	{
+	    //log("errorCode:500 Server Error");
+	    daemon.event_log.sendMessage(e);
+	    return("{\"errorCode\":\"500\", \"errorMessage\":\"REST Server Error\"}");
+	}
+    }
+
+   /**
+    * delete request 
+    *
+    * @param  api_function
+    * @param  params
+    */
+    public String delete(String api_function, QMessage params)
+    {
+        log("DELETE request function: "+api_function);
+        try
+        {
+	    String url =getUrl()+api_function;
+	    String urlParameters;
+	    if(!params.isEmpty())
+		urlParameters ="?";
+	    else
+		urlParameters ="";
+	    Set set = params.entrySet();
+	    Iterator it = set.iterator();
+	    while (it.hasNext())
+	    {
+	        Map.Entry entry = (Map.Entry) it.next();
+	        urlParameters = urlParameters+entry.getKey()+"="+entry.getValue()+"&";
+	    }
+	    url = url+urlParameters;
+            URL obj = new URL(url);
+	    log("URL parameters: "+urlParameters);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            if(!this.getAuth().equals(""))
+	    {
+		String encoding = Base64.getEncoder().encodeToString((this.getAuth()).getBytes("UTF-8"));
+	        con.setRequestProperty("Authorization", "Basic "+encoding);
+	    }
+            con.setRequestMethod("DELETE");
+            con.setRequestProperty("User-Agent", "Java/1.8");
             int responseCode = con.getResponseCode();
             BufferedReader in = new BufferedReader( new InputStreamReader(con.getInputStream()));
             String inputLine;
@@ -178,7 +324,7 @@ public class RestProxy extends Object
 	    return("{\"errorCode\":\"500\", \"errorMessage\":\"REST Server Error\"}");
 	}
     }
-
+    
    /**
     * getDatabytes -- called to to get non-REST functions that return raw data
     *

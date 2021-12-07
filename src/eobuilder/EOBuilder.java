@@ -36,6 +36,7 @@ public class EOBuilder
             cb.importName=modelPackage;
             cb.containerName=containerClass;
             cb.outputDir=containerDir;
+	    cb.config=config;
             cb.doBuild();
 
             /** build the entity objects */
@@ -51,6 +52,7 @@ public class EOBuilder
             vob.packageName=modelPackage;
             vob.createMorphers=false;
             vob.outputDir=modelDir;
+	    vob.config=config;
             vob.doBuild();
         }
         catch(Exception e)

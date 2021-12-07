@@ -4,6 +4,8 @@ package com.qkernel;
 // ----------------------------------------------------------------------------
 // History:
 // --------
+// 08/11/20 M. Gill     Add addTerminationHook() to process signal 15
+//                      termination and orderly shutdown.
 // 06/25/05 M. Gill	Add log() methods.
 // 01/19/04 M. Gill	Add getNodeVersion() an getNodeProvider() methods.
 // 04/07/02 M. Gill	Add register(), lookup() & service() methods. 
@@ -25,8 +27,8 @@ import com.qkernel.license.*;
 import com.qkernel.classloader.AppClassReloader;
 import java.lang.management.ManagementFactory;
 
-@SuppressWarnings("unchecked")
-
+@SuppressWarnings({"unchecked", "deprecation"})
+//
 //----------------------------------------------------------------------------
 // Here is the (potentially useful) Daemon class.  Daemon encapsulates 
 // objects and methods that are oft times needed by classes within a qkernel 
@@ -94,8 +96,8 @@ public abstract class Daemon
 	String vmBuild     = ManagementFactory.getRuntimeMXBean().getVmVersion();
 	jvmVersion =specVendor+" "+specVersion+" (build "+vmBuild+")";
 	String banner   ="*******************************************************************";
-	String version  ="metaQ Application Node Release "+nodeVer;
-	String copyright="Copyright "+year+" metaQ.io Corp. -- All Rights Reserved";
+	String version  ="SPN Application Node Release "+nodeVer;
+	String copyright="Copyright "+year+" Sapien Network Corp. -- All Rights Reserved";
 	String license  ="License key:"+lkey+" -- "+useBy+"\n"; 
         String runtime  ="JVM version is "+jvmVersion;
 
@@ -155,7 +157,7 @@ public abstract class Daemon
 	loader = new AppClassReloader(this, docBase);
 
 	start(argvs);
-
+	addTerminationHook(this);
 	WaitForExit();
     }
 
@@ -635,6 +637,35 @@ public abstract class Daemon
 	return(clazz);
     }
 
+    //--------------------------------------------------------------------------------
+    // METHOD 	addTerminationHook()
+    //
+    // PURPOSE:	Handle kill signal 15 (terminate)
+    //
+    // PROCESS:	N/A
+    // RETURN:  N/A
+    //--------------------------------------------------------------------------------
+    public void addTerminationHook(Daemon d)
+    {
+        Runtime.getRuntime().addShutdownHook(new Thread()
+        {
+            @Override
+            public void run()
+            {
+                try
+                {
+	            setName("SHUTDOWN");
+                    d.shutdown();
+	        }
+                catch (Exception e)
+                {
+		    log(e);
+                }
+            }
+        });
+    }
+
+    
 
     //--------------------------------------------------------------------------------
     // METHOD 	Daemon()

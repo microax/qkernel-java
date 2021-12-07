@@ -10,7 +10,10 @@ package com.qkernel.batch;
 import java.lang.*;
 import java.util.*;
 import com.qkernel.*;
+import com.qkernel.json.*;
 
+@SuppressWarnings( "unchecked" )
+//
 public abstract class Qbatch extends Thread
 {
     public 	int retryInterval;
@@ -21,7 +24,7 @@ public abstract class Qbatch extends Thread
     public 	int deferredCount;
     public 	com.qkernel.Queue deferred;
     public      com.qkernel.Queue reQueue;
-
+    
     //--------------------------------------------------------------------------------
     // METHOD put()
     //
@@ -38,29 +41,15 @@ public abstract class Qbatch extends Thread
 	// We allow for the business object to 
 	// override the channel defaults.
 	//----------------------------------------------
-	int v	= m.getInt("CHN-RETRY-TIMER");
-	int c	= m.getInt("CHN-RETRY-COUNTER");
+	if(m.getBoolean("CHN-RETRY-OVERRIDE"))
+	{
+            retryInterval=0;
+	    retryCount   =0;
+	}
+        m.putInt("CHN-RETRY-MINUTES", retryInterval);
+        m.putInt("CHN-RETRY-COUNTER", retryCount);
 
-	if(c == -1)
-	{
-	    //-------------------------------------
-	    // Turn off channel retries
-	    //-------------------------------------
-	    m.putInt("CHN-RETRY-TIMER", 0);
-	    m.putInt("CHN-RETRY-COUNTER", 0);
-	}
-	else
-	{
-	    //---------------------------------------------
-	    // Use the channel defaults or the 
-	    // override values
-	    //---------------------------------------------
-	    if(c == 0)
-	    	m.putInt("CHN-RETRY-TIMER", retryInterval);
-	    if(v == 0)
-	    	m.putInt("CHN-RETRY-COUNTER", retryCount);
-	}
-	//-----------------------------------------------
+        //-----------------------------------------------
 	// Bump overall batch count in this channel
 	//------------------------------------------------
 	batchCount++;
@@ -90,17 +79,23 @@ public abstract class Qbatch extends Thread
     //--------------------------------------------------------------------------------
     public void callback(QMessage m)
     {
-	int 	status 		= m.getInt("CHN-STATUS");
-	int 	retryTimer	= m.getInt("CHN-RETRY-TIMER");
-	int 	retryCounter	= m.getInt("CHN-RETRY-COUNTER");
-	String	log		= m.getString("CHN-ACCOUNT-LOG");
-
+        int    batchCounter= m.getInt("CHN-RETRY-COUNTER");
+	String batchId     = m.getString("CHN-BATCH-ID");
+	String     log     = "No status was returned";
+	int        status  = 0;
+	String batchCompletionTime = m.getString("CHN-BATCH-RUNNING-TIME");
+        try{
+	    JSONObject param = m.getJSONObject("batchParams");
+	    status= param.getInt("status");
+	    log   = param.getString("message");
+	}
+	catch(Exception e){}
 	//----------------------------------------------
 	// The total batch count is decremented...
 	//----------------------------------------------
 	batchCount--;
 
-	if(status !=0 && retryCounter !=0)
+	if(status !=0 && batchCounter !=0)
 	{
 	    //----------------------------------------------------------------
 	    // The batch failed. So, we decrement the re-try counter and place 
@@ -108,11 +103,8 @@ public abstract class Qbatch extends Thread
 	    // minute to re-submit batches. ...It's a good idea to make the 
 	    // inverval greater than 1 since the granuality is +- 1 minute.
 	    //----------------------------------------------------------------
-	    daemon.log("Will Re-try up to "+retryCounter+" times every "+retryInterval+" minutes");	
-
-	    m.putInt("CHN-RETRY-TIMER", retryInterval);
-	    m.putInt("CHN-RETRY-COUNTER", --retryCounter);
-	    m.putBoolean("CHN-ISRETRY", true);
+	    daemon.log(batchId+" status is "+status+" -- will Re-try up to "+batchCounter+" times every "+retryInterval+" minutes");	
+	    m.put("CHN-RETRY-COUNTER", --batchCounter);
 	    deferred.Enqueue(m);
  	    deferredCount++;
 	}
@@ -124,7 +116,7 @@ public abstract class Qbatch extends Thread
 	    // how to charge for it. Everything billing needs should be 
 	    // already recorded in the (QMessage) batch.
 	    //----------------------------------------------------------------
-	    daemon.log(log);	
+	    daemon.log("Batch ID:"+batchId+" is done with status "+status+" in "+batchCompletionTime+"ms");	
 	}
     }
 
@@ -139,15 +131,9 @@ public abstract class Qbatch extends Thread
     public void run()
     {
         QMessage n;
-        String eStr;
 	deferred 	= new com.qkernel.Queue();
 	reQueue		= new com.qkernel.Queue();
         setName(myName);
-	if(retryCount !=0)
-        {
-	eStr ="Ready. Retry interval="+retryInterval+" minutes. Retry count="+ retryCount;
-        daemon.log(eStr);
-        }
 
 	for(;;)
 	{
@@ -156,7 +142,7 @@ public abstract class Qbatch extends Thread
 		//---------------------------
                 // Wakeup once per minute
                 //---------------------------
-                sleep(60000);
+                sleep(1000 *60);
 
           	while ((n = (QMessage)deferred.Dequeue()) != null )
             	{
@@ -164,17 +150,15 @@ public abstract class Qbatch extends Thread
 		    // Get batch from list, and decrement 
 		    // its retry timer...
 		    //------------------------------------
-		    int t= n.getInt("CHN-RETRY-TIMER");
-		    n.putInt("CHN-RETRY-TIMER", --t);
-
-               	    if(t == 0)
+		    int t = n.getInt("CHN-RETRY-MINUTES");	
+               	    if(--t == 0)
                     {
 			//--------------------------------
 			// re-insert batch into channel
 			//--------------------------------
+                        n.putInt("CHN-RETRY-MINUTES", retryInterval);
 			batchCount++;
 			dispatch(n);
-			deferredCount--;
         	    }
 		    else
 		    {
@@ -182,17 +166,11 @@ public abstract class Qbatch extends Thread
 			// We're gonna re-insert this 
 			// back into the deferred Queue
 			//-------------------------------
-			reQueue.Enqueue(n);
+                        n.put("CHN-RETRY-MINUTES", t);
+			deferred.Enqueue(n);
+			break;
 		    }
                 }
-
-		while((n = (QMessage)reQueue.Dequeue()) != null)
-		{
-		    //---------------------------------
-		    // Re-insert into deferred Queue
-		    //---------------------------------
-		    deferred.Enqueue(n);
-		}
 	    }
 	    catch(Exception e)
 	    {
@@ -244,8 +222,16 @@ public abstract class Qbatch extends Thread
     //--------------------------------------------------------------------------------
     public void start(int retry, int count)
     {
-	retryInterval	= retry;
-	retryCount	= count;
+	if(retry == 0 || count == 0)
+	{
+	retryInterval= 0;
+	retryCount   = 0;
+	}
+	else
+	{
+	retryInterval= retry;
+	retryCount   = count;
+	}
 	initialize();        
 	super.start();
     }

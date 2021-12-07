@@ -14,7 +14,7 @@ public final class ZeroOne extends LicenseKey
 
     public String licenseTo()
     {
-	return("For exclusive use by metaQ.io");
+	return("For exclusive use by Sapien Networks.");
     }
 
     public String nodeVersion()

@@ -1558,6 +1558,8 @@ public class Request
 	{
             Map m = this.getParams();
 	    r     = (String)m.get(p);
+	    if(r == null)
+	        r="";
 	}
 	catch(Exception e){ r="";}
 	return(r);

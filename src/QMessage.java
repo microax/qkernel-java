@@ -4,6 +4,9 @@ package com.qkernel;
 // ----------------------------------------------------------------------------
 // History:
 // --------
+// 04/09/21 M. Gill     Update getSecretString() to support "useEnvSecrets"
+//                      parameters.
+//
 // 14/04/18 M. Gill     Add JSONObject support.
 //
 // 09/20/02 M. Gill	Force serialVersionUID so that different versions of 
@@ -24,6 +27,7 @@ package com.qkernel;
 import java.lang.*;
 import java.io.*;
 import java.util.*;
+import java.util.Base64;
 import com.qkernel.json.*;
 //
 
@@ -334,6 +338,36 @@ public class QMessage extends Hashtable implements Serializable, SerialVersionId
 
 
     //--------------------------------------------------------------------------------
+    // METHOD   getSecretString()
+    //
+    // PURPOSE: get Secret String via key
+    //
+    // INPUT:   Object - key
+    // RETURN:  String
+    //--------------------------------------------------------------------------------
+    public String getSecretString(Object key)
+    {
+	String d = "";
+	String s = this.getString(key);
+        if(this.getBoolean("useEnvSecrets"))
+	{
+	    try
+	    {
+	    Map<String, String> env = null;
+	    env = System.getenv();
+	    d   = env.get(key);
+            }
+	    catch(Exception e){}
+	    return(d);
+	}
+        else
+	{
+            byte[] decoded = Base64.getDecoder().decode(s);
+            return(new String(decoded));
+	}
+    }
+
+    //--------------------------------------------------------------------------------
     // METHOD   getJSONObject()
     //
     // PURPOSE: get JSONObject via key
@@ -435,6 +469,26 @@ public class QMessage extends Hashtable implements Serializable, SerialVersionId
     public void putString(Object key, String value)
     {
 	super.put(key, value);
+    }
+
+//--------------------------------------------------------------------------------
+    // METHOD   putSecretString()
+    //
+    // PURPOSE: put Secret String parameter via key
+    //
+    // INPUT:   Object - key
+    // 		String - value
+    // RETURN:  None
+    //--------------------------------------------------------------------------------
+    public void putSecretString(Object key, String value)
+    {
+	try
+	{
+            String  encoded = Base64.getEncoder().encodeToString(value.getBytes("UTF-8"));
+	    super.put(key, encoded);
+	}catch(Exception e)
+	{
+	}
     }
 
     //--------------------------------------------------------------------------------

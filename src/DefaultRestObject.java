@@ -32,13 +32,19 @@ public class DefaultRestObject extends BusinessObject
     */
     public JSONObject defaultRestMethod(com.qkernel.http.HTTPServer.Request req)
     {
+	//-----------------------------------------
+	// let's get the path of bogus request...
+	//-----------------------------------------
+	String path = req.getPath();
+        log("***ERROR*** no route for:"+path);
+	
 	//--------------------------------------------------
 	// We're gonna return a JSON reply so we create
 	// a JSON Object...
 	//--------------------------------------------------
 	JSONObject reply = new JSONObject();
-	reply.put("status" ,     "OK");
-	reply.put("message",     "REST Object: "+req.getPath()+" not found");
+	reply.put("status" ,     "FAIL");
+	reply.put("message",     "REST Object: "+path+" not found");
 	return(reply);
     }
 

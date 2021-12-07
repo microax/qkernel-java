@@ -8,6 +8,16 @@ echo "building qkernel package..."
 javac -nowarn -d classes/ src/*.java
 code=$?
 if [ $code -eq 0 ]; then
+echo "building qkernel.crypto.bytes package..."
+javac -nowarn -d classes/ -cp classes/ src/crypto/bytes/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
+echo "building qkernel.crypto.bcrypt package..."
+javac -nowarn -d classes/ -cp classes/ src/crypto/bcrypt/*.java
+code=$?
+fi
+if [ $code -eq 0 ]; then
 echo "building qkernel.json package..." 
 javac -nowarn -d classes/ src/json/*.java
 code=$?
@@ -36,11 +46,12 @@ echo "building qkernel.comm package..."
 javac -nowarn -d classes/ src/comm/*.java
 code=$?
 fi
-if [ $code -eq 0 ]; then
-echo "building qkernel.classloader package..." 
-javac -nowarn -d classes/ src/classloader/*.java
-code=$?
-fi
+######### Removed class re-loader for QML
+#if [ $code -eq 0 ]; then
+#echo "building qkernel.classloader package..." 
+#javac -nowarn -d classes/ src/classloader/*.java
+#code=$?
+#fi
 if [ $code -eq 0 ]; then
 echo "compiling qkernel.http package..." 
 javac -nowarn -d classes/ -cp classes/:$CLASSPATH src/http/HTTPServer.java

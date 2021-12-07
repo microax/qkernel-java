@@ -195,6 +195,8 @@ public class EntityObjectBuilder
             while (tables.next())
 	    {
                 nextTable = tables.getString("TABLE_NAME");
+                if(config.getString(nextTable).equals("exclude"))
+		    continue;
                 buildTable(nextTable);
 		buildSubTable(nextTable);
             }
@@ -231,7 +233,7 @@ public class EntityObjectBuilder
         }
 
         Statement stmt1 = conn.createStatement();
-        ResultSet rs1 = stmt1.executeQuery("SELECT * FROM " + nextTable);
+        ResultSet rs1 = stmt1.executeQuery("SELECT * FROM " + nextTable+" LIMIT 1");
         ResultSetMetaData rsmd1 = rs1.getMetaData();
 
         for (int i = 1; i <= rsmd1.getColumnCount() && pkType.equals("Int"); i++)
@@ -353,7 +355,7 @@ public class EntityObjectBuilder
     {
         String retval = "";
         Statement stmt = conn.createStatement();
-        ResultSet rs = stmt.executeQuery("SELECT * FROM " + tablename);
+        ResultSet rs = stmt.executeQuery("SELECT * FROM " + tablename+" LIMIT 1");
         ResultSetMetaData rsmd = rs.getMetaData();
 
         int i = 0;
@@ -1254,6 +1256,8 @@ public class EntityObjectBuilder
 
 	if(pk == null)
 	{
+	pk = (String)p.get("_id");
+	  if(pk == null)
 	    pk = (String)p.get("id");
 	    if(pk == null)
 	        pk = (String)p.get(tablename+"Id");                

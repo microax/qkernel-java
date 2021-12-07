@@ -25,7 +25,7 @@ public class ValueObjectBuilder
     public String password = "";
     public String CATALOG = login;
     public String schema = login;
-
+    public EOBuilderConfig config = null;
 
     /**
      *  Description of the Field
@@ -154,6 +154,9 @@ public class ValueObjectBuilder
             while (tables.next())
 	    {
                 nextTable = format(tables.getString("TABLE_NAME"));
+                if(config.getString(nextTable).equals("exclude"))
+		    continue;
+
                 System.out.println("Working on table "+nextTable);
                 getTableSchema(nextTable);
 		makeSubClazz(nextTable);
